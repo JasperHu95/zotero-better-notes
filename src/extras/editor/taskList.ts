@@ -6,7 +6,8 @@ import {
 } from "prosemirror-state";
 import { EditorState } from "prosemirror-state";
 import { Node, ResolvedPos } from "prosemirror-model";
-import { Decoration, DecorationSet, EditorView } from "prosemirror-view";
+import type { Decoration, DecorationSet, EditorView } from "prosemirror-view";
+import { getNativeDecorationClasses } from "./nativeProseMirror";
 
 export {
   initTaskListPlugin,
@@ -33,7 +34,9 @@ interface TaskListOptions {
 const MARKER_RE = /^\[([ xX])\]( ?)/;
 const MARKER_UNCHECKED = "[ ] ";
 
-const taskListPluginKey = new PluginKey<DecorationSet>("betterNotesTaskList");
+const taskListPluginKey = new PluginKey<DecorationSet | null>(
+  "betterNotesTaskList",
+);
 
 interface TaskItemInfo {
   /** Depth of the listItem node. */
@@ -213,7 +216,10 @@ function handleTaskEnter(view: EditorView): boolean {
 // Decorations: render the markers as checkboxes.
 // ---------------------------------------------------------------------------
 
-function buildDecorations(doc: Node): DecorationSet {
+function buildDecorations(doc: Node): DecorationSet | null {
+  const native = getNativeDecorationClasses();
+  if (!native) return null;
+  const { Decoration, DecorationSet } = native;
   const decorations: Decoration[] = [];
   doc.descendants((node, pos, parent) => {
     if (node.type.name !== "listItem") {
@@ -351,15 +357,17 @@ function initTaskListPlugin(plugins: readonly Plugin[]) {
   };
   (enterSpec as any).betterNotes = "taskListEnter";
 
-  const decorationSpec: PluginSpec<DecorationSet> = {
+  const decorationSpec: PluginSpec<DecorationSet | null> = {
     key: taskListPluginKey,
     state: {
       init: (_config, state) => buildDecorations(state.doc),
-      apply: (tr, old) => (tr.docChanged ? buildDecorations(tr.doc) : old),
+      // Rebuild on doc change, or while still null (classes not yet resolvable).
+      apply: (tr, old) =>
+        tr.docChanged || old === null ? buildDecorations(tr.doc) : old,
     },
     props: {
       decorations(state) {
-        return taskListPluginKey.getState(state);
+        return taskListPluginKey.getState(state) ?? undefined;
       },
     },
   };

@@ -6,12 +6,13 @@ import {
   TextSelection,
   Transaction,
 } from "prosemirror-state";
-import {
+import type {
   Decoration,
   DecorationSet,
   EditorView,
   NodeView,
 } from "prosemirror-view";
+import { getNativeDecorationClasses } from "./nativeProseMirror";
 import { tableNodeTypes } from "prosemirror-tables";
 import { TableMap } from "prosemirror-tables";
 import { TableView, updateColumnsOnResize } from "prosemirror-tables";
@@ -472,8 +473,11 @@ function zeroes(n: number): 0[] {
 export function handleDecorations(
   state: EditorState,
   cell: number,
-): DecorationSet {
-  const decorations = [];
+): DecorationSet | undefined {
+  const native = getNativeDecorationClasses();
+  if (!native) return undefined;
+  const { Decoration, DecorationSet } = native;
+  const decorations: Decoration[] = [];
   const $cell = state.doc.resolve(cell);
   const table = $cell.node(-1);
   if (!table) {
