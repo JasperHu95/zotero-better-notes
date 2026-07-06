@@ -48,6 +48,11 @@ describe("Sync - Citation links", function () {
     return (await addon.api.convert.item2citation([item.id], [{}])) as string;
   }
 
+  /** The bare citation span (no `<p>` wrapper), for lists and table cells. */
+  async function citationSpan(item: Zotero.Item) {
+    return (await citationHTML(item)).replace(/^<p>|<\/p>$/g, "");
+  }
+
   async function createNote(innerHTML: string) {
     const note = new Zotero.Item("note");
     note.setNote(`<div data-schema-version="9">${innerHTML}</div>`);
@@ -151,5 +156,61 @@ describe("Sync - Citation links", function () {
     expect(countAnchors(md)).to.equal(1);
     expect(md).to.not.match(/<a[^>]*>\s*<a/);
     expect(md).to.not.include("</a></a>");
+  });
+
+  it("keeps a citation inside a list item across an export/import round-trip", async function () {
+    // Inline HTML in a list item stays a `raw` node through md2note and used
+    // to be dropped entirely, leaving only the citation text. See #1597
+    const item = await createRegularItem();
+    const note = await createNote(
+      `<ul><li>${await citationSpan(item)}</li></ul>`,
+    );
+    const dir = await getTempDirectory();
+
+    const md = await addon.api.convert.note2md(note, dir, {
+      keepNoteLink: true,
+    });
+
+    // Export keeps the citation markup inside the list item.
+    expect(md).to.match(/^[*-] +.*data-citation/m);
+
+    const mdStatus = addon.api.sync.getMDStatusFromContent(md);
+    const noteContent = await addon.api.convert.md2note(mdStatus, note, {
+      isImport: true,
+    });
+
+    // The citation is rebuilt from the (real) cited item, still in the list.
+    expect(noteContent).to.match(
+      /<li[^>]*>[\s\S]*?data-citation[\s\S]*?<\/li>/,
+    );
+    expect(noteContent).to.include('class="citation"');
+    expect(noteContent).to.not.include("zotero://select/");
+  });
+
+  it("keeps a citation inside a table cell across an export/import round-trip", async function () {
+    const item = await createRegularItem();
+    const note = await createNote(
+      `<table><tbody><tr><td>${await citationSpan(item)}</td></tr></tbody></table>`,
+    );
+    const dir = await getTempDirectory();
+
+    const md = await addon.api.convert.note2md(note, dir, {
+      keepNoteLink: true,
+    });
+
+    // Export keeps the citation markup inside the table cell.
+    expect(md).to.match(/\|.*data-citation.*\|/);
+
+    const mdStatus = addon.api.sync.getMDStatusFromContent(md);
+    const noteContent = await addon.api.convert.md2note(mdStatus, note, {
+      isImport: true,
+    });
+
+    // The citation is rebuilt from the (real) cited item, still in the cell.
+    expect(noteContent).to.match(
+      /<td[^>]*>[\s\S]*?data-citation[\s\S]*?<\/td>/,
+    );
+    expect(noteContent).to.include('class="citation"');
+    expect(noteContent).to.not.include("zotero://select/");
   });
 });

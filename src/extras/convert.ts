@@ -462,7 +462,10 @@ function rehype2note(rehype: HRoot) {
         },
       );
       if (hasStyle) {
-        node.value = toHtml(node).replace(/[\r\n]/g, "");
+        node.value = toHtml(node, { allowDangerousHtml: true }).replace(
+          /[\r\n]/g,
+          "",
+        );
         node.children = [];
         node.type = "raw";
       }
@@ -483,7 +486,7 @@ function rehype2note(rehype: HRoot) {
     rehype,
     (node: any) => node.type === "element" && (node as any).tagName === "thead",
     (node: any) => {
-      node.value = toHtml(node).slice(7, -8);
+      node.value = toHtml(node, { allowDangerousHtml: true }).slice(7, -8);
       node.children = [];
       node.type = "raw";
     },
@@ -515,16 +518,20 @@ function rehype2note(rehype: HRoot) {
       node.type === "element" &&
       ((node as any).tagName === "li" || (node as any).tagName === "td"),
     (node: any) => {
+      // Only drop line-break-only text nodes. Other types must be kept:
+      // inline HTML (e.g. citations) is still a `raw` node here. See #1597
       node.children = node.children.filter(
         (_n: { type: string; value: string }) =>
-          _n.type === "element" ||
-          (_n.type === "text" && _n.value.replace(/[\r\n]/g, "")),
+          _n.type !== "text" || _n.value.replace(/[\r\n]/g, ""),
       );
 
       // https://github.com/windingwind/zotero-better-notes/issues/1300
       // For all math-inline node in list, remove 1 space from its sibling text node
       if (node.tagName === "li") {
         for (const p of node.children) {
+          if (!p.children) {
+            continue;
+          }
           for (let idx = 0; idx < p.children.length; idx++) {
             const _n = p.children[idx];
             if (_n.properties?.className?.includes("math-inline")) {
