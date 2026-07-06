@@ -3,8 +3,6 @@ import { unified } from "unified";
 import rehypeParse from "rehype-parse";
 import { toHtml } from "hast-util-to-html";
 import { toText } from "hast-util-to-text";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
 // visit may push nodes twice, use new Array(...new Set(nodes))
 // if the you want to process nodes outside visit
 import { visit } from "unist-util-visit";
@@ -13,7 +11,6 @@ import { h } from "hastscript";
 import YAML = require("yamljs");
 
 import { Root as HRoot } from "hast";
-import { Root as MRoot } from "mdast";
 import { fileExists, formatPath, jointPath, randomString } from "./str";
 import {
   copyEmbeddedImagesInHTML,
@@ -85,11 +82,21 @@ async function note2rehype(
   return await server.proxy.note2rehype(...args);
 }
 
-async function rehype2remark(
-  ...args: Parameters<(typeof handlers)["rehype2remark"]>
+async function rehype2md(...args: Parameters<(typeof handlers)["rehype2md"]>) {
+  const server = await getConvertServer();
+  return await server.proxy.rehype2md(...args);
+}
+
+async function rehype2latex(
+  ...args: Parameters<(typeof handlers)["rehype2latex"]>
 ) {
   const server = await getConvertServer();
-  return await server.proxy.rehype2remark(...args);
+  return await server.proxy.rehype2latex(...args);
+}
+
+async function md2rehype(...args: Parameters<(typeof handlers)["md2rehype"]>) {
+  const server = await getConvertServer();
+  return await server.proxy.md2rehype(...args);
 }
 
 async function rehype2note(
@@ -97,30 +104,6 @@ async function rehype2note(
 ) {
   const server = await getConvertServer();
   return await server.proxy.rehype2note(...args);
-}
-
-async function remark2rehype(
-  ...args: Parameters<(typeof handlers)["remark2rehype"]>
-) {
-  const server = await getConvertServer();
-  return await server.proxy.remark2rehype(...args);
-}
-
-async function md2remark(...args: Parameters<(typeof handlers)["md2remark"]>) {
-  const server = await getConvertServer();
-  return await server.proxy.md2remark(...args);
-}
-
-async function remark2md(...args: Parameters<(typeof handlers)["remark2md"]>) {
-  const server = await getConvertServer();
-  return await server.proxy.remark2md(...args);
-}
-
-async function remark2latex(
-  ...args: Parameters<(typeof handlers)["remark2latex"]>
-) {
-  const server = await getConvertServer();
-  return await server.proxy.remark2latex(...args);
 }
 
 async function md2html(...args: Parameters<(typeof handlers)["md2html"]>) {
@@ -161,11 +144,10 @@ async function note2md(
     false,
     NodeMode.direct,
   );
-  const remark = await rehype2remark(rehype as HRoot);
-  if (!remark) {
+  let md = await rehype2md(rehype as HRoot);
+  if (typeof md !== "string") {
     throw new Error("Parsing Error: Rehype2Remark");
   }
-  let md = await remark2md(remark as MRoot);
   try {
     md =
       (await addon.api.template.runTemplate(
@@ -216,10 +198,9 @@ async function md2note(
   noteItem: Zotero.Item,
   options: { isImport?: boolean } = {},
 ) {
-  const remark = await md2remark(mdStatus.content);
-  const _rehype = await remark2rehype(remark);
-  const _note = await rehype2note(_rehype as HRoot);
-  const rehype = await note2rehype(_note);
+  // Fused md2remark -> remark2rehype -> rehype2note -> note2rehype: one
+  // worker call, so the intermediate trees never cross the worker boundary
+  const rehype = await md2rehype(mdStatus.content);
 
   // Check if image citation already belongs to note
   processM2NRehypeMetaImageNodes(getM2NRehypeImageNodes(rehype));
@@ -269,11 +250,10 @@ async function note2latex(
     NodeMode.direct,
   );
 
-  const remark = await rehype2remark(rehype as HRoot);
-  if (!remark) {
+  let latex = await rehype2latex(rehype as HRoot);
+  if (typeof latex !== "string") {
     throw new Error("Parsing Error: Rehype2Remark");
   }
-  let latex = await remark2latex(remark as MRoot);
   try {
     latex =
       (await addon.api.template.runTemplate(
@@ -370,12 +350,11 @@ async function link2html(
 }
 
 async function html2md(html: string) {
-  const rehype = await note2rehype(html);
-  const remark = await rehype2remark(rehype as HRoot);
-  if (!remark) {
+  const server = await getConvertServer();
+  const md = await server.proxy.html2md(html);
+  if (typeof md !== "string") {
     throw new Error("Parsing Error: HTML2MD");
   }
-  const md = await remark2md(remark as MRoot);
   return md;
 }
 
@@ -776,6 +755,10 @@ async function processN2MRehypeImageNodes(
   }
 }
 
+// Built once: constructing a processor per image node is wasteful, and the
+// remark plugins previously chained here are no-ops for HTML parsing.
+const htmlParseProcessor = unified().use(rehypeParse, { fragment: true });
+
 function getM2NRehypeAnnotationNodes(rehype: any) {
   const nodes: any[] = [];
   visit(
@@ -845,11 +828,7 @@ function processM2NRehypeMetaImageNodes(nodes: string | any[]) {
         nodeRaw = alt.split("|").slice(0, -1).join("|");
       }
 
-      const newNode = unified()
-        .use(remarkGfm)
-        .use(remarkMath)
-        .use(rehypeParse, { fragment: true })
-        .parse(nodeRaw).children[0] as any;
+      const newNode = htmlParseProcessor.parse(nodeRaw).children[0] as any;
       if (!newNode) {
         continue;
       }

@@ -36,6 +36,10 @@ export {
   md2remark,
   content2diff,
   md2html,
+  rehype2md,
+  rehype2latex,
+  html2md,
+  md2rehype,
 };
 
 function replace(targetNode: any, sourceNode: any) {
@@ -46,12 +50,12 @@ function replace(targetNode: any, sourceNode: any) {
   targetNode.children = sourceNode.children;
 }
 
+// Unified processors are stateless once constructed, so build each one a
+// single time instead of on every conversion call.
+const note2rehypeProcessor = unified().use(rehypeParse, { fragment: true });
+
 function note2rehype(str: string) {
-  const rehype = unified()
-    .use(remarkGfm)
-    .use(remarkMath)
-    .use(rehypeParse, { fragment: true })
-    .parse(str);
+  const rehype = note2rehypeProcessor.parse(str);
 
   // Make sure <br> is inline break. Remove \n before/after <br>
   const removeBlank = (node: any, parentNode: any, offset: number) => {
@@ -111,323 +115,322 @@ function note2rehype(str: string) {
   return rehype;
 }
 
-async function rehype2remark(rehype: HRoot) {
-  // hast-util-to-mdast v10 removed the `h(node, type, ...)` helper and the
-  // `all` export: handlers now receive a `state` object and build mdast
-  // nodes directly. `patch` copies the position info like `h` used to.
-  const patch = (state: State, hNode: any, mNode: any) => {
-    state.patch(hNode, mNode);
-    return mNode;
-  };
-  return await unified()
-    .use(rehypeRemark, {
-      handlers: {
-        span: (state: State, node: any) => {
-          if (
-            node.properties?.style?.includes("text-decoration: line-through")
-          ) {
-            return patch(state, node, {
-              type: "delete",
-              children: state.all(node),
-            });
-          } else if (node.properties?.style?.includes("background-color")) {
-            return patch(state, node, { type: "html", value: toHtml(node) });
-          } else if (node.properties?.style?.includes("color")) {
-            return patch(state, node, { type: "html", value: toHtml(node) });
-          } else if (node.properties?.className?.includes("math")) {
-            return patch(state, node, {
-              type: "inlineMath",
-              value: toText(node).slice(1, -1),
-            });
-          } else {
-            return patch(state, node, {
-              type: "paragraph",
-              children: state.all(node),
-            });
+// hast-util-to-mdast v10 removed the `h(node, type, ...)` helper and the
+// `all` export: handlers now receive a `state` object and build mdast
+// nodes directly. `patch` copies the position info like `h` used to.
+const patch = (state: State, hNode: any, mNode: any) => {
+  state.patch(hNode, mNode);
+  return mNode;
+};
+
+const rehype2remarkProcessor = unified().use(rehypeRemark, {
+  handlers: {
+    span: (state: State, node: any) => {
+      if (node.properties?.style?.includes("text-decoration: line-through")) {
+        return patch(state, node, {
+          type: "delete",
+          children: state.all(node),
+        });
+      } else if (node.properties?.style?.includes("background-color")) {
+        return patch(state, node, { type: "html", value: toHtml(node) });
+      } else if (node.properties?.style?.includes("color")) {
+        return patch(state, node, { type: "html", value: toHtml(node) });
+      } else if (node.properties?.className?.includes("math")) {
+        return patch(state, node, {
+          type: "inlineMath",
+          value: toText(node).slice(1, -1),
+        });
+      } else {
+        return patch(state, node, {
+          type: "paragraph",
+          children: state.all(node),
+        });
+      }
+    },
+    pre: (state: State, node: any) => {
+      if (node.properties?.className?.includes("math")) {
+        return patch(state, node, {
+          type: "math",
+          value: toText(node).slice(2, -2),
+        });
+      } else {
+        const ret = rehype2remarkDefaultHandlers.pre(state, node);
+        return ret;
+      }
+    },
+    u: (state: State, node: any) => {
+      return patch(state, node, { type: "u", value: toText(node) });
+    },
+    sub: (state: State, node: any) => {
+      return patch(state, node, { type: "sub", value: toText(node) });
+    },
+    sup: (state: State, node: any) => {
+      return patch(state, node, { type: "sup", value: toText(node) });
+    },
+    table: (state: State, node: any) => {
+      let hasStyle = false;
+      let hasHeader = false;
+      visit(
+        node,
+        (_n: any) =>
+          _n.type === "element" &&
+          ["tr", "td", "th"].includes((_n as any).tagName),
+        (node: any) => {
+          if (node.properties.style) {
+            hasStyle = true;
+          }
+          if (!hasHeader && node.tagName === "th") {
+            hasHeader = true;
           }
         },
-        pre: (state: State, node: any) => {
-          if (node.properties?.className?.includes("math")) {
-            return patch(state, node, {
-              type: "math",
-              value: toText(node).slice(2, -2),
-            });
-          } else {
-            const ret = rehype2remarkDefaultHandlers.pre(state, node);
-            return ret;
+      );
+      // if (0 && hasStyle) {
+      //   return h(node, "styleTable", toHtml(node));
+      // } else {
+      const tableNode = rehype2remarkDefaultHandlers.table(
+        state,
+        node,
+      ) as Table;
+      // Remove empty thead
+      if (!tableNode.data) {
+        tableNode.data = {};
+      }
+      if (!hasHeader) {
+        (tableNode.data as any).bnRemove = true;
+      }
+      return tableNode;
+      // }
+    },
+    /*
+     * See https://github.com/windingwind/zotero-better-notes/issues/820
+     * The text content separated by non-text content (e.g. inline math)
+     * inside `li`(rehype) will be converted to `paragraph`(remark),
+     * which will be turned to line with \n in MD:
+     * ```rehype
+     * li: [text, text, inline-math, text]
+     * ```
+     * to
+     * ```remark
+     * listitem: [paragraph, inline-math, paragraph]
+     * ```
+     * to
+     * ```md
+     *  * text text
+     *    inline-math
+     *    text
+     * ```
+     */
+    li: (state: State, node: any) => {
+      const mNode = rehype2remarkDefaultHandlers.li(state, node) as ListItem;
+      // hast-util-to-mdast v10 keeps the inline content of a bare <li>
+      // (no wrapping <p> in the note HTML) in a single paragraph, so the
+      // paragraph-merging below no longer sees the math node. Insert the
+      // spaces around inline math here instead, to keep the exported MD
+      // identical to what previous versions produced.
+      // https://github.com/windingwind/zotero-better-notes/issues/1300
+      if (
+        mNode &&
+        !node.children.some(
+          (_n: any) => _n.type === "element" && _n.tagName === "p",
+        )
+      ) {
+        for (const child of mNode.children) {
+          if (child.type !== "paragraph") {
+            continue;
           }
-        },
-        u: (state: State, node: any) => {
-          return patch(state, node, { type: "u", value: toText(node) });
-        },
-        sub: (state: State, node: any) => {
-          return patch(state, node, { type: "sub", value: toText(node) });
-        },
-        sup: (state: State, node: any) => {
-          return patch(state, node, { type: "sup", value: toText(node) });
-        },
-        table: (state: State, node: any) => {
-          let hasStyle = false;
-          let hasHeader = false;
-          visit(
-            node,
-            (_n: any) =>
-              _n.type === "element" &&
-              ["tr", "td", "th"].includes((_n as any).tagName),
-            (node: any) => {
-              if (node.properties.style) {
-                hasStyle = true;
-              }
-              if (!hasHeader && node.tagName === "th") {
-                hasHeader = true;
-              }
-            },
-          );
-          // if (0 && hasStyle) {
-          //   return h(node, "styleTable", toHtml(node));
-          // } else {
-          const tableNode = rehype2remarkDefaultHandlers.table(
-            state,
-            node,
-          ) as Table;
-          // Remove empty thead
-          if (!tableNode.data) {
-            tableNode.data = {};
-          }
-          if (!hasHeader) {
-            (tableNode.data as any).bnRemove = true;
-          }
-          return tableNode;
-          // }
-        },
-        /*
-         * See https://github.com/windingwind/zotero-better-notes/issues/820
-         * The text content separated by non-text content (e.g. inline math)
-         * inside `li`(rehype) will be converted to `paragraph`(remark),
-         * which will be turned to line with \n in MD:
-         * ```rehype
-         * li: [text, text, inline-math, text]
-         * ```
-         * to
-         * ```remark
-         * listitem: [paragraph, inline-math, paragraph]
-         * ```
-         * to
-         * ```md
-         *  * text text
-         *    inline-math
-         *    text
-         * ```
-         */
-        li: (state: State, node: any) => {
-          const mNode = rehype2remarkDefaultHandlers.li(
-            state,
-            node,
-          ) as ListItem;
-          // hast-util-to-mdast v10 keeps the inline content of a bare <li>
-          // (no wrapping <p> in the note HTML) in a single paragraph, so the
-          // paragraph-merging below no longer sees the math node. Insert the
-          // spaces around inline math here instead, to keep the exported MD
-          // identical to what previous versions produced.
-          // https://github.com/windingwind/zotero-better-notes/issues/1300
-          if (
-            mNode &&
-            !node.children.some(
-              (_n: any) => _n.type === "element" && _n.tagName === "p",
-            )
-          ) {
-            for (const child of mNode.children) {
-              if (child.type !== "paragraph") {
-                continue;
-              }
-              for (let idx = 0; idx < child.children.length; idx++) {
-                // @ts-ignore inlineMath is not in mdast
-                if (child.children[idx].type === "inlineMath") {
-                  child.children.splice(idx + 1, 0, {
-                    type: "text",
-                    value: " ",
-                  });
-                  child.children.splice(idx, 0, { type: "text", value: " " });
-                  idx += 2;
-                }
-              }
-            }
-          }
-          // If no more than 1 children, skip
-          if (!mNode || mNode.children.length < 2) {
-            return mNode;
-          }
-          const children: any[] = [];
-          const paragraphNodes = ["list", "code", "math", "table"];
-          // Merge none-list nodes inside li into the previous paragraph node to avoid line break
-          while (mNode.children.length > 0) {
-            const current = mNode.children.shift();
-            let cached = children[children.length - 1];
-            // https://github.com/windingwind/zotero-better-notes/issues/1207
-            // Create a new paragraph node
-            if (cached?.type !== "paragraph") {
-              cached = {
-                type: "paragraph",
-                children: [],
-              };
-              children.push(cached);
-            }
-            if (current?.type === "paragraph") {
-              cached.children.push(...current.children);
-            }
-            // https://github.com/windingwind/zotero-better-notes/issues/1300
+          for (let idx = 0; idx < child.children.length; idx++) {
             // @ts-ignore inlineMath is not in mdast
-            else if (current?.type === "inlineMath") {
-              cached.children.push({
+            if (child.children[idx].type === "inlineMath") {
+              child.children.splice(idx + 1, 0, {
                 type: "text",
                 value: " ",
               });
-              cached.children.push(current);
-              cached.children.push({
-                type: "text",
-                value: " ",
-              });
-            } else if (
-              current?.type &&
-              !paragraphNodes.includes(current?.type)
-            ) {
-              cached.children.push(current);
-            } else {
-              children.push(current);
+              child.children.splice(idx, 0, { type: "text", value: " " });
+              idx += 2;
             }
           }
-          mNode.children.push(...children);
-          return mNode;
-        },
-        wrapper: (state: State, node: any) => {
-          return patch(state, node, { type: "wrapper", value: toText(node) });
-        },
-        wrapperleft: (state: State, node: any) => {
-          return patch(state, node, {
-            type: "wrapperleft",
-            value: toText(node),
+        }
+      }
+      // If no more than 1 children, skip
+      if (!mNode || mNode.children.length < 2) {
+        return mNode;
+      }
+      const children: any[] = [];
+      const paragraphNodes = ["list", "code", "math", "table"];
+      // Merge none-list nodes inside li into the previous paragraph node to avoid line break
+      while (mNode.children.length > 0) {
+        const current = mNode.children.shift();
+        let cached = children[children.length - 1];
+        // https://github.com/windingwind/zotero-better-notes/issues/1207
+        // Create a new paragraph node
+        if (cached?.type !== "paragraph") {
+          cached = {
+            type: "paragraph",
+            children: [],
+          };
+          children.push(cached);
+        }
+        if (current?.type === "paragraph") {
+          cached.children.push(...current.children);
+        }
+        // https://github.com/windingwind/zotero-better-notes/issues/1300
+        // @ts-ignore inlineMath is not in mdast
+        else if (current?.type === "inlineMath") {
+          cached.children.push({
+            type: "text",
+            value: " ",
           });
-        },
-        wrapperright: (state: State, node: any) => {
-          return patch(state, node, {
-            type: "wrapperright",
-            value: toText(node),
+          cached.children.push(current);
+          cached.children.push({
+            type: "text",
+            value: " ",
           });
-        },
-        zhighlight: (state: State, node: any) => {
-          return patch(state, node, {
-            type: "zhighlight",
-            value: toHtml(node),
-          });
-        },
-        zcitation: (state: State, node: any) => {
-          return patch(state, node, { type: "zcitation", value: toHtml(node) });
-        },
-        znotelink: (state: State, node: any) => {
-          return patch(state, node, { type: "znotelink", value: toHtml(node) });
-        },
-        zimage: (state: State, node: any) => {
-          return patch(state, node, { type: "zimage", value: toHtml(node) });
-        },
-      },
-    })
-    .run(rehype as any);
+        } else if (current?.type && !paragraphNodes.includes(current?.type)) {
+          cached.children.push(current);
+        } else {
+          children.push(current);
+        }
+      }
+      mNode.children.push(...children);
+      return mNode;
+    },
+    wrapper: (state: State, node: any) => {
+      return patch(state, node, { type: "wrapper", value: toText(node) });
+    },
+    wrapperleft: (state: State, node: any) => {
+      return patch(state, node, {
+        type: "wrapperleft",
+        value: toText(node),
+      });
+    },
+    wrapperright: (state: State, node: any) => {
+      return patch(state, node, {
+        type: "wrapperright",
+        value: toText(node),
+      });
+    },
+    zhighlight: (state: State, node: any) => {
+      return patch(state, node, {
+        type: "zhighlight",
+        value: toHtml(node),
+      });
+    },
+    zcitation: (state: State, node: any) => {
+      return patch(state, node, { type: "zcitation", value: toHtml(node) });
+    },
+    znotelink: (state: State, node: any) => {
+      return patch(state, node, { type: "znotelink", value: toHtml(node) });
+    },
+    zimage: (state: State, node: any) => {
+      return patch(state, node, { type: "zimage", value: toHtml(node) });
+    },
+  },
+});
+
+async function rehype2remark(rehype: HRoot) {
+  return await rehype2remarkProcessor.run(rehype as any);
 }
+
+const remark2mdHandlers = {
+  code: (node: { value: string }) => {
+    return "```\n" + node.value + "\n```";
+  },
+  u: (node: { value: string }) => {
+    return "<u>" + node.value + "</u>";
+  },
+  sub: (node: { value: string }) => {
+    return "<sub>" + node.value + "</sub>";
+  },
+  sup: (node: { value: string }) => {
+    return "<sup>" + node.value + "</sup>";
+  },
+  inlineMath: (node: { value: string }) => {
+    return "$" + node.value + "$";
+  },
+  styleTable: (node: { value: any }) => {
+    return node.value;
+  },
+  wrapper: (node: { value: string }) => {
+    return "\n<!-- " + node.value + " -->\n";
+  },
+  wrapperleft: (node: { value: string }) => {
+    return "<!-- " + node.value + " -->\n";
+  },
+  wrapperright: (node: { value: string }) => {
+    return "\n<!-- " + node.value + " -->";
+  },
+  zhighlight: (node: { value: string }) => {
+    return node.value.replace(/(^<zhighlight>|<\/zhighlight>$)/g, "");
+  },
+  zcitation: (node: { value: string }) => {
+    return node.value.replace(/(^<zcitation>|<\/zcitation>$)/g, "");
+  },
+  znotelink: (node: { value: string }) => {
+    return node.value.replace(/(^<znotelink>|<\/znotelink>$)/g, "");
+  },
+  zimage: (node: { value: string }) => {
+    return node.value.replace(/(^<zimage>|<\/zimage>$)/g, "");
+  },
+};
+
+const gfmTableExtension = gfmTableToMarkdown();
+
+const remark2mdTableHandler = (node: any) => {
+  // table must use same handlers as rest of pipeline
+  const txt = toMarkdown(node, {
+    extensions: [gfmTableExtension],
+    // Use the same handlers as the rest of the pipeline
+    handlers: remark2mdHandlers,
+  });
+
+  if (node.data?.bnRemove) {
+    const lines = txt.split("\n");
+    // Replace the first line cells from `|{multiple spaces}|{multiple spaces}|...` to `| <!-- --> | <!-- --> |...`
+    lines[0] = lines[0].replace(/(\| +)+/g, (s) => {
+      return s.replace(/ +/g, " <!-- --> ");
+    });
+    return lines.join("\n");
+  }
+  return txt;
+};
+
+const remark2mdProcessor = unified()
+  .use(remarkGfm)
+  .use(remarkMath)
+  .use(remarkStringify, {
+    // mdast-util-to-markdown v2 changed the default to "one"; keep the
+    // old output format so synced MD files do not change
+    listItemIndent: "tab",
+    // Prevent recursive call
+    handlers: Object.assign({}, remark2mdHandlers, {
+      table: remark2mdTableHandler,
+    }),
+  } as any);
 
 function remark2md(remark: MRoot) {
-  const handlers = {
-    code: (node: { value: string }) => {
-      return "```\n" + node.value + "\n```";
-    },
-    u: (node: { value: string }) => {
-      return "<u>" + node.value + "</u>";
-    },
-    sub: (node: { value: string }) => {
-      return "<sub>" + node.value + "</sub>";
-    },
-    sup: (node: { value: string }) => {
-      return "<sup>" + node.value + "</sup>";
-    },
-    inlineMath: (node: { value: string }) => {
-      return "$" + node.value + "$";
-    },
-    styleTable: (node: { value: any }) => {
-      return node.value;
-    },
-    wrapper: (node: { value: string }) => {
-      return "\n<!-- " + node.value + " -->\n";
-    },
-    wrapperleft: (node: { value: string }) => {
-      return "<!-- " + node.value + " -->\n";
-    },
-    wrapperright: (node: { value: string }) => {
-      return "\n<!-- " + node.value + " -->";
-    },
-    zhighlight: (node: { value: string }) => {
-      return node.value.replace(/(^<zhighlight>|<\/zhighlight>$)/g, "");
-    },
-    zcitation: (node: { value: string }) => {
-      return node.value.replace(/(^<zcitation>|<\/zcitation>$)/g, "");
-    },
-    znotelink: (node: { value: string }) => {
-      return node.value.replace(/(^<znotelink>|<\/znotelink>$)/g, "");
-    },
-    zimage: (node: { value: string }) => {
-      return node.value.replace(/(^<zimage>|<\/zimage>$)/g, "");
-    },
-  };
-  const tableHandler = (node: any) => {
-    const tbl = gfmTableToMarkdown();
-    // table must use same handlers as rest of pipeline
-    const txt = toMarkdown(node, {
-      extensions: [tbl],
-      // Use the same handlers as the rest of the pipeline
-      handlers,
-    });
-
-    if (node.data?.bnRemove) {
-      const lines = txt.split("\n");
-      // Replace the first line cells from `|{multiple spaces}|{multiple spaces}|...` to `| <!-- --> | <!-- --> |...`
-      lines[0] = lines[0].replace(/(\| +)+/g, (s) => {
-        return s.replace(/ +/g, " <!-- --> ");
-      });
-      return lines.join("\n");
-    }
-    return txt;
-  };
-  return String(
-    unified()
-      .use(remarkGfm)
-      .use(remarkMath)
-      .use(remarkStringify, {
-        // mdast-util-to-markdown v2 changed the default to "one"; keep the
-        // old output format so synced MD files do not change
-        listItemIndent: "tab",
-        // Prevent recursive call
-        handlers: Object.assign({}, handlers, {
-          table: tableHandler,
-        }),
-      } as any)
-      .stringify(remark as any),
-  );
+  return String(remark2mdProcessor.stringify(remark as any));
 }
+
+const remark2latexProcessor = unified()
+  .use(remarkGfm)
+  .use(remarkMath)
+  .use(remarkStringify, {
+    listItemIndent: "tab",
+    handlers: {
+      text: (node: { value: string }) => {
+        return node.value;
+      },
+    },
+  } as any);
 
 function remark2latex(remark: MRoot) {
-  return String(
-    unified()
-      .use(remarkGfm)
-      .use(remarkMath)
-      .use(remarkStringify, {
-        listItemIndent: "tab",
-        handlers: {
-          text: (node: { value: string }) => {
-            return node.value;
-          },
-        },
-      } as any)
-      .stringify(remark as any),
-  );
+  return String(remark2latexProcessor.stringify(remark as any));
 }
+
+const md2remarkProcessor = unified()
+  .use(remarkGfm)
+  .use(remarkMath)
+  .use(remarkParse);
 
 function md2remark(str: string) {
   // Parse Obsidian-style image ![[xxx.png]]
@@ -439,11 +442,7 @@ function md2remark(str: string) {
       (match, altText, imageURL) =>
         `![${altText}](${encodeURI(decodeURI(imageURL))})`,
     );
-  const remark = unified()
-    .use(remarkGfm)
-    .use(remarkMath)
-    .use(remarkParse)
-    .parse(str);
+  const remark = md2remarkProcessor.parse(str);
   // visit(
   //   remark,
   //   (_n) => _n.type === "image",
@@ -459,17 +458,17 @@ function md2remark(str: string) {
   return remark;
 }
 
+const remark2rehypeProcessor = unified().use(remarkRehype, {
+  allowDangerousHtml: true,
+  // handlers: {
+  //   code: (h, node) => {
+  //     return h(node, "pre", [h(node, "text", node.value)]);
+  //   },
+  // },
+});
+
 async function remark2rehype(remark: any) {
-  const rehype = await unified()
-    .use(remarkRehype, {
-      allowDangerousHtml: true,
-      // handlers: {
-      //   code: (h, node) => {
-      //     return h(node, "pre", [h(node, "text", node.value)]);
-      //   },
-      // },
-    })
-    .run(remark);
+  const rehype = await remark2rehypeProcessor.run(remark);
 
   // remark-math v6 (mdast-util-math v3) emits math as
   // `<code class="language-math math-inline">` and
@@ -505,6 +504,11 @@ async function remark2rehype(remark: any) {
 
   return rehype;
 }
+
+const rehype2noteProcessor = unified().use(rehypeStringify, {
+  allowDangerousCharacters: true,
+  allowDangerousHtml: true,
+});
 
 function rehype2note(rehype: HRoot) {
   // Del node
@@ -710,12 +714,7 @@ function rehype2note(rehype: HRoot) {
 
   rehype.children = tempChildren;
 
-  return unified()
-    .use(rehypeStringify, {
-      allowDangerousCharacters: true,
-      allowDangerousHtml: true,
-    })
-    .stringify(rehype as any);
+  return rehype2noteProcessor.stringify(rehype as any);
 }
 
 function content2diff(oldStr: string, newStr: string) {
@@ -730,6 +729,42 @@ async function md2html(md: string) {
   const html = rehype2note(rehype as HRoot);
   const parsedHTML = await parseKatexHTML(html);
   return parsedHTML;
+}
+
+/*
+ * Fused pipelines. Each worker call structured-clones its arguments and
+ * return value, so for stages with no main-thread work in between, running
+ * the whole chain in a single call avoids cloning the intermediate trees
+ * back and forth (which costs about as much as a conversion stage itself
+ * for large notes).
+ */
+
+async function rehype2md(rehype: HRoot) {
+  const remark = await rehype2remark(rehype);
+  if (!remark) {
+    throw new Error("Parsing Error: Rehype2Remark");
+  }
+  return remark2md(remark as MRoot);
+}
+
+async function rehype2latex(rehype: HRoot) {
+  const remark = await rehype2remark(rehype);
+  if (!remark) {
+    throw new Error("Parsing Error: Rehype2Remark");
+  }
+  return remark2latex(remark as MRoot);
+}
+
+async function html2md(html: string) {
+  return await rehype2md(note2rehype(html) as HRoot);
+}
+
+// md -> normalized note rehype tree (the input for the M2N node processors)
+async function md2rehype(md: string) {
+  const remark = md2remark(md);
+  const rehype = await remark2rehype(remark);
+  const note = rehype2note(rehype as HRoot);
+  return note2rehype(note);
 }
 
 async function parseKatexHTML(html: string) {

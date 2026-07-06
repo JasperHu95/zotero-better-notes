@@ -10,6 +10,10 @@ import {
   md2remark,
   content2diff,
   md2html,
+  rehype2md,
+  rehype2latex,
+  html2md,
+  md2rehype,
 } from "../convert";
 
 export { handlers };
@@ -24,6 +28,10 @@ const handlers = {
   md2remark,
   content2diff,
   md2html,
+  rehype2md,
+  rehype2latex,
+  html2md,
+  md2rehype,
 };
 
 const messageServer = new MessageHelper({
