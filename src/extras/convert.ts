@@ -1,11 +1,14 @@
 import { unified } from "unified";
 import rehypeParse from "rehype-parse";
-import rehypeRemark, { all } from "rehype-remark";
+import rehypeRemark from "rehype-remark";
 import remarkRehype from "remark-rehype";
 import rehypeStringify from "rehype-stringify";
 import remarkParse from "remark-parse";
 import remarkStringify from "remark-stringify";
-import { defaultHandlers as rehype2remarkDefaultHandlers } from "hast-util-to-mdast";
+import {
+  defaultHandlers as rehype2remarkDefaultHandlers,
+  State,
+} from "hast-util-to-mdast";
 import { toMarkdown } from "mdast-util-to-markdown";
 import { gfmTableToMarkdown } from "mdast-util-gfm-table";
 import { toHtml } from "hast-util-to-html";
@@ -18,9 +21,8 @@ import { visit } from "unist-util-visit";
 import { visitParents } from "unist-util-visit-parents";
 import { h } from "hastscript";
 
-import { Root as HRoot, RootContent } from "hast";
-import { ListContent, Root as MRoot, TableContent } from "mdast";
-import { Nodes } from "hast-util-to-text/lib";
+import { Nodes, Root as HRoot, RootContent } from "hast";
+import { ListItem, Root as MRoot, Table } from "mdast";
 
 import { diffChars } from "diff";
 
@@ -110,50 +112,69 @@ function note2rehype(str: string) {
 }
 
 async function rehype2remark(rehype: HRoot) {
+  // hast-util-to-mdast v10 removed the `h(node, type, ...)` helper and the
+  // `all` export: handlers now receive a `state` object and build mdast
+  // nodes directly. `patch` copies the position info like `h` used to.
+  const patch = (state: State, hNode: any, mNode: any) => {
+    state.patch(hNode, mNode);
+    return mNode;
+  };
   return await unified()
     .use(rehypeRemark, {
       handlers: {
-        span: (h, node) => {
+        span: (state: State, node: any) => {
           if (
             node.properties?.style?.includes("text-decoration: line-through")
           ) {
-            return h(node, "delete", all(h, node));
+            return patch(state, node, {
+              type: "delete",
+              children: state.all(node),
+            });
           } else if (node.properties?.style?.includes("background-color")) {
-            return h(node, "html", toHtml(node));
+            return patch(state, node, { type: "html", value: toHtml(node) });
           } else if (node.properties?.style?.includes("color")) {
-            return h(node, "html", toHtml(node));
+            return patch(state, node, { type: "html", value: toHtml(node) });
           } else if (node.properties?.className?.includes("math")) {
-            return h(node, "inlineMath", toText(node).slice(1, -1));
+            return patch(state, node, {
+              type: "inlineMath",
+              value: toText(node).slice(1, -1),
+            });
           } else {
-            return h(node, "paragraph", all(h, node));
+            return patch(state, node, {
+              type: "paragraph",
+              children: state.all(node),
+            });
           }
         },
-        pre: (h, node) => {
+        pre: (state: State, node: any) => {
           if (node.properties?.className?.includes("math")) {
-            return h(node, "math", toText(node).slice(2, -2));
+            return patch(state, node, {
+              type: "math",
+              value: toText(node).slice(2, -2),
+            });
           } else {
-            const ret = rehype2remarkDefaultHandlers.pre(h, node);
+            const ret = rehype2remarkDefaultHandlers.pre(state, node);
             return ret;
           }
         },
-        u: (h, node) => {
-          return h(node, "u", toText(node));
+        u: (state: State, node: any) => {
+          return patch(state, node, { type: "u", value: toText(node) });
         },
-        sub: (h, node) => {
-          return h(node, "sub", toText(node));
+        sub: (state: State, node: any) => {
+          return patch(state, node, { type: "sub", value: toText(node) });
         },
-        sup: (h, node) => {
-          return h(node, "sup", toText(node));
+        sup: (state: State, node: any) => {
+          return patch(state, node, { type: "sup", value: toText(node) });
         },
-        table: (h, node) => {
+        table: (state: State, node: any) => {
           let hasStyle = false;
           let hasHeader = false;
           visit(
             node,
-            (_n) =>
+            (_n: any) =>
               _n.type === "element" &&
               ["tr", "td", "th"].includes((_n as any).tagName),
-            (node) => {
+            (node: any) => {
               if (node.properties.style) {
                 hasStyle = true;
               }
@@ -166,15 +187,15 @@ async function rehype2remark(rehype: HRoot) {
           //   return h(node, "styleTable", toHtml(node));
           // } else {
           const tableNode = rehype2remarkDefaultHandlers.table(
-            h,
+            state,
             node,
-          ) as TableContent;
+          ) as Table;
           // Remove empty thead
+          if (!tableNode.data) {
+            tableNode.data = {};
+          }
           if (!hasHeader) {
-            if (!tableNode.data) {
-              tableNode.data = {};
-            }
-            tableNode.data.bnRemove = true;
+            (tableNode.data as any).bnRemove = true;
           }
           return tableNode;
           // }
@@ -198,8 +219,40 @@ async function rehype2remark(rehype: HRoot) {
          *    text
          * ```
          */
-        li: (h, node) => {
-          const mNode = rehype2remarkDefaultHandlers.li(h, node) as ListContent;
+        li: (state: State, node: any) => {
+          const mNode = rehype2remarkDefaultHandlers.li(
+            state,
+            node,
+          ) as ListItem;
+          // hast-util-to-mdast v10 keeps the inline content of a bare <li>
+          // (no wrapping <p> in the note HTML) in a single paragraph, so the
+          // paragraph-merging below no longer sees the math node. Insert the
+          // spaces around inline math here instead, to keep the exported MD
+          // identical to what previous versions produced.
+          // https://github.com/windingwind/zotero-better-notes/issues/1300
+          if (
+            mNode &&
+            !node.children.some(
+              (_n: any) => _n.type === "element" && _n.tagName === "p",
+            )
+          ) {
+            for (const child of mNode.children) {
+              if (child.type !== "paragraph") {
+                continue;
+              }
+              for (let idx = 0; idx < child.children.length; idx++) {
+                // @ts-ignore inlineMath is not in mdast
+                if (child.children[idx].type === "inlineMath") {
+                  child.children.splice(idx + 1, 0, {
+                    type: "text",
+                    value: " ",
+                  });
+                  child.children.splice(idx, 0, { type: "text", value: " " });
+                  idx += 2;
+                }
+              }
+            }
+          }
           // If no more than 1 children, skip
           if (!mNode || mNode.children.length < 2) {
             return mNode;
@@ -246,26 +299,35 @@ async function rehype2remark(rehype: HRoot) {
           mNode.children.push(...children);
           return mNode;
         },
-        wrapper: (h, node) => {
-          return h(node, "wrapper", toText(node));
+        wrapper: (state: State, node: any) => {
+          return patch(state, node, { type: "wrapper", value: toText(node) });
         },
-        wrapperleft: (h, node) => {
-          return h(node, "wrapperleft", toText(node));
+        wrapperleft: (state: State, node: any) => {
+          return patch(state, node, {
+            type: "wrapperleft",
+            value: toText(node),
+          });
         },
-        wrapperright: (h, node) => {
-          return h(node, "wrapperright", toText(node));
+        wrapperright: (state: State, node: any) => {
+          return patch(state, node, {
+            type: "wrapperright",
+            value: toText(node),
+          });
         },
-        zhighlight: (h, node) => {
-          return h(node, "zhighlight", toHtml(node));
+        zhighlight: (state: State, node: any) => {
+          return patch(state, node, {
+            type: "zhighlight",
+            value: toHtml(node),
+          });
         },
-        zcitation: (h, node) => {
-          return h(node, "zcitation", toHtml(node));
+        zcitation: (state: State, node: any) => {
+          return patch(state, node, { type: "zcitation", value: toHtml(node) });
         },
-        znotelink: (h, node) => {
-          return h(node, "znotelink", toHtml(node));
+        znotelink: (state: State, node: any) => {
+          return patch(state, node, { type: "znotelink", value: toHtml(node) });
         },
-        zimage: (h, node) => {
-          return h(node, "zimage", toHtml(node));
+        zimage: (state: State, node: any) => {
+          return patch(state, node, { type: "zimage", value: toHtml(node) });
         },
       },
     })
@@ -338,6 +400,9 @@ function remark2md(remark: MRoot) {
       .use(remarkGfm)
       .use(remarkMath)
       .use(remarkStringify, {
+        // mdast-util-to-markdown v2 changed the default to "one"; keep the
+        // old output format so synced MD files do not change
+        listItemIndent: "tab",
         // Prevent recursive call
         handlers: Object.assign({}, handlers, {
           table: tableHandler,
@@ -353,6 +418,7 @@ function remark2latex(remark: MRoot) {
       .use(remarkGfm)
       .use(remarkMath)
       .use(remarkStringify, {
+        listItemIndent: "tab",
         handlers: {
           text: (node: { value: string }) => {
             return node.value;
@@ -394,7 +460,7 @@ function md2remark(str: string) {
 }
 
 async function remark2rehype(remark: any) {
-  return await unified()
+  const rehype = await unified()
     .use(remarkRehype, {
       allowDangerousHtml: true,
       // handlers: {
@@ -404,6 +470,40 @@ async function remark2rehype(remark: any) {
       // },
     })
     .run(remark);
+
+  // remark-math v6 (mdast-util-math v3) emits math as
+  // `<code class="language-math math-inline">` and
+  // `<pre><code class="language-math math-display">`. Restore the flat
+  // `<span class="math-inline/math-display">` shape that rehype2note expects,
+  // otherwise the code-block visitor there consumes display math.
+  visit(
+    rehype,
+    (node: any) =>
+      node.type === "element" &&
+      node.tagName === "pre" &&
+      (node.children?.[0] as any)?.properties?.className?.includes(
+        "math-display",
+      ),
+    (node: any) => {
+      const code = node.children[0];
+      node.tagName = "span";
+      node.properties = { className: ["math-display"] };
+      node.children = code.children;
+    },
+  );
+  visit(
+    rehype,
+    (node: any) =>
+      node.type === "element" &&
+      node.tagName === "code" &&
+      node.properties?.className?.includes("math-inline"),
+    (node: any) => {
+      node.tagName = "span";
+      node.properties = { className: ["math-inline"] };
+    },
+  );
+
+  return rehype;
 }
 
 function rehype2note(rehype: HRoot) {

@@ -558,13 +558,13 @@ export function getNoteLatexContent() {
 export function getNoteLatex() {
   return `\\section{LaTeX Test Document}
 \\subsection{Headers}
- \\section{H1 Header}
- \\subsection{H2 Header}
- \\subsubsection{H3 Header}
- \\textbf{H4 Header}
- \\textbf{H5 Header}
- \\textbf{H6 Header}
- \\subsection{Emphasis}
+\\section{H1 Header}
+\\subsection{H2 Header}
+\\subsubsection{H3 Header}
+\\textbf{H4 Header}
+\\textbf{H5 Header}
+\\textbf{H6 Header}
+\\subsection{Emphasis}
 
 
 \\textit{This text is italicized.} \\textit{This text is also italicized.}
@@ -578,8 +578,8 @@ export function getNoteLatex() {
 
 \\subsection{Images}
 \\subsection{Lists}
- \\subsubsection{Unordered List}
- \\begin{itemize}
+\\subsubsection{Unordered List}
+\\begin{itemize}
 \\item 
   Item 1
   
@@ -590,7 +590,7 @@ export function getNoteLatex() {
   Item 3
    
 \\end{itemize}\\subsubsection{Ordered List}
- \\begin{enumerate}
+\\begin{enumerate}
 \\item 
   First item
   
@@ -601,7 +601,7 @@ export function getNoteLatex() {
   Third item
    
 \\end{enumerate}\\subsection{Tables}
- \\begin{table}[htbp]
+\\begin{table}[htbp]
 \\centering
 \\caption{Caption}
 \\label{tab:simple_table}
@@ -633,7 +633,7 @@ export function getNoteLatex() {
 \\hline
 \\end{tabular}
 \\end{table}\\subsection{Math}
- \\subsubsection{Inline Math}
+\\subsubsection{Inline Math}
 
 
 This is an inline math equation: $E = mc^2$.
