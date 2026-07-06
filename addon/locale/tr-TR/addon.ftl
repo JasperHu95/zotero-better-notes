@@ -129,3 +129,13 @@ userGuide-workspaceNoteInfo-desc = Notunuz hakkındaki etiket, ilişki ve bağla
 userGuide-finish-title = Hazırız!
 userGuide-finish-desc = Better Notes ile not alma yolculuğunuzun tadını çıkartın!
     Bu rehbere her yardım menüsünden her zaman ulaşabilirsiniz.
+
+libraryGraph-title = Not İlişki Grafiği
+libraryGraph-allLibraries = Tüm Kütüphaneler
+libraryGraph-showUnlinked = Bağlantısız notları göster
+libraryGraph-searchPlaceholder = Notlarda ara…
+libraryGraph-rescan = Yeniden tara
+libraryGraph-rescan-tooltip = Tüm notlar için bağlantı dizinini yeniden oluştur
+libraryGraph-indexing = Notlar dizinleniyor… { $done }/{ $total }
+libraryGraph-stats = { $notes } not · { $links } bağlantı
+libraryGraph-empty = Not bağlantısı bulunamadı. Burada görmek için notlar arasında bağlantılar oluşturun.

@@ -129,3 +129,13 @@ userGuide-workspaceNoteInfo-desc = You can view, edit, and manage the note's tag
 userGuide-finish-title = We are all set!
 userGuide-finish-desc = Enjoy your note-taking journey with Better Notes!
     You can always run this guide again from the Help menu.
+
+libraryGraph-title = Граф связей заметок
+libraryGraph-allLibraries = Все библиотеки
+libraryGraph-showUnlinked = Показывать несвязанные заметки
+libraryGraph-searchPlaceholder = Поиск заметок…
+libraryGraph-rescan = Пересканировать
+libraryGraph-rescan-tooltip = Перестроить индекс ссылок для всех заметок
+libraryGraph-indexing = Индексирование заметок… { $done }/{ $total }
+libraryGraph-stats = Заметок: { $notes } · Связей: { $links }
+libraryGraph-empty = Связи между заметками не найдены. Создайте ссылки между заметками, чтобы увидеть их здесь.

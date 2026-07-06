@@ -25,3 +25,6 @@ menuTab-moveNewWindow =
     .label = Move to BN New Window
 menu-openNoteAsBNWindow =
     .label = Apri Nota in nuova finestra di BN
+
+menuTools-libraryGraph =
+    .label = Grafo delle relazioni tra note

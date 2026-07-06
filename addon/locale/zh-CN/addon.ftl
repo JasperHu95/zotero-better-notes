@@ -129,3 +129,13 @@ userGuide-workspaceNoteInfo-desc = 您可以查看、编辑和管理笔记的标
 userGuide-finish-title = 准备完成！
 userGuide-finish-desc = 享受您与Better Notes的笔记旅程！
     您可以随时从菜单栏 - 帮助再次运行此指南。
+
+libraryGraph-title = 笔记关系图谱
+libraryGraph-allLibraries = 所有文库
+libraryGraph-showUnlinked = 显示无链接的笔记
+libraryGraph-searchPlaceholder = 搜索笔记…
+libraryGraph-rescan = 重新扫描
+libraryGraph-rescan-tooltip = 重建所有笔记的链接索引
+libraryGraph-indexing = 正在索引笔记… { $done }/{ $total }
+libraryGraph-stats = { $notes } 篇笔记 · { $links } 条链接
+libraryGraph-empty = 未找到笔记链接。在笔记之间创建链接后即可在此查看。

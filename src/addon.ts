@@ -75,6 +75,13 @@ class Addon {
       worker?: Worker;
       server?: MessageHelper<typeof relationHandlers>;
     };
+    libraryGraph: {
+      window?: Window;
+      libraryID: number | "all";
+      showUnlinked: boolean;
+      scanned: boolean;
+      refreshTimer?: number;
+    };
     parsing: {
       server?: MessageHelper<typeof parsingHandlers>;
     };
@@ -128,6 +135,11 @@ class Addon {
       },
     },
     relation: {},
+    libraryGraph: {
+      libraryID: "all",
+      showUnlinked: false,
+      scanned: false,
+    },
     parsing: {},
     convert: {},
     imageCache: {},

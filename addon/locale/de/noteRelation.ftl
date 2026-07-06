@@ -26,3 +26,6 @@ note-outbound-sidenav =
     .tooltiptext = Ausgehende Verbindungen
 note-outbound-refresh =
     .tooltiptext = Aktualisieren
+
+note-relation-openLibraryGraph =
+    .tooltiptext = Vollständigen Bibliotheksgraphen öffnen

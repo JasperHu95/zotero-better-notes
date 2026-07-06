@@ -82,8 +82,10 @@ import {
   getLinkTargetByAnnotation,
   getNoteLinkInboundRelation,
   getNoteLinkOutboundRelation,
+  getAllNoteLinkRelations,
   linkAnnotationToTarget,
   updateNoteLinkRelation,
+  updateAllNoteLinkRelations,
 } from "./utils/relation";
 import {
   registerEditorSection,
@@ -196,10 +198,12 @@ const note = {
 const relation = {
   getNoteLinkInboundRelation,
   getNoteLinkOutboundRelation,
+  getAllNoteLinkRelations,
   updateNoteLinkRelation: Zotero.Utilities.throttle(
     updateNoteLinkRelation,
     3000,
   ),
+  updateAllNoteLinkRelations,
   linkAnnotationToTarget,
   getLinkTargetByAnnotation,
   getAnnotationByLinkTarget,

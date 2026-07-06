@@ -25,3 +25,6 @@ menuTab-moveNewWindow =
     .label = 移动到 BN 新窗口
 menu-openNoteAsBNWindow =
     .label = 打开笔记到 BN 新窗口
+
+menuTools-libraryGraph =
+    .label = 笔记关系图谱

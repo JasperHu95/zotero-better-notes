@@ -43,7 +43,8 @@ import { waitUtilAsync } from "./utils/wait";
 import { initSyncList } from "./modules/sync/api";
 import { getFocusedWindow } from "./utils/window";
 import { registerNoteRelation } from "./modules/workspace/relation";
-import { closeRelationServer } from "./utils/relation";
+import { showLibraryGraph } from "./modules/relationGraphWindow";
+import { closeRelationServer, removeNoteLinkIndex } from "./utils/relation";
 import { registerNoteLinkSection } from "./modules/workspace/link";
 import { showUserGuide } from "./modules/userGuide";
 import { refreshTemplatesInNote } from "./modules/template/refresh";
@@ -188,6 +189,16 @@ async function onNotify(
       }
     }
   }
+  if (event === "delete" && type === "item") {
+    for (const id of ids) {
+      const data = extraData?.[id] as
+        | { libraryID?: number; key?: string }
+        | undefined;
+      if (data?.libraryID && data?.key) {
+        await removeNoteLinkIndex(data.libraryID, data.key);
+      }
+    }
+  }
   if (type === "item-tag") {
     for (const itemTagID of ids) {
       await syncAnnotationNoteTags(
@@ -327,6 +338,8 @@ const onCreateNoteFromMD = createNoteFromMD;
 
 const onShowUserGuide = showUserGuide;
 
+const onShowLibraryGraph = showLibraryGraph;
+
 // Add your hooks here. For element click, etc.
 // Keep in mind hooks only do dispatch. Don't add code that does real jobs in hooks.
 // Otherwise the code would be hard to read and maintain.
@@ -354,4 +367,5 @@ export default {
   onCreateNoteFromMD,
   onCreateNote,
   onShowUserGuide,
+  onShowLibraryGraph,
 };

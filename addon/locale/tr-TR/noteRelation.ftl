@@ -26,3 +26,6 @@ note-outbound-sidenav =
     .tooltiptext = Giden Bağlantılar
 note-outbound-refresh =
     .tooltiptext = Yenile
+
+note-relation-openLibraryGraph =
+    .tooltiptext = Tüm kütüphane grafiğini aç

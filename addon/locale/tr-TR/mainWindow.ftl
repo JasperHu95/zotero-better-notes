@@ -25,3 +25,6 @@ menuTab-moveNewWindow =
     .label = Move to BN New Window
 menu-openNoteAsBNWindow =
     .label = Notu BN Yeni Pencereinde Aç
+
+menuTools-libraryGraph =
+    .label = Not İlişki Grafiği

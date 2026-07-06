@@ -26,3 +26,6 @@ note-outbound-sidenav =
     .tooltiptext = Link in uscita
 note-outbound-refresh =
     .tooltiptext = Aggiorna
+
+note-relation-openLibraryGraph =
+    .tooltiptext = Apri il grafo dell'intera biblioteca

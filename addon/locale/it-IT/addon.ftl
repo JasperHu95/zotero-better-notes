@@ -125,3 +125,13 @@ userGuide-workspaceNoteInfo-desc = Puoi vedere, modificare e gestire i tag della
 userGuide-finish-title = Fine del tutorial!
 userGuide-finish-desc = Divertiti a usare Better Notes!
     Puoi visualizzare nuovamente il tutorial dal menu aiuto.
+
+libraryGraph-title = Grafo delle relazioni tra note
+libraryGraph-allLibraries = Tutte le biblioteche
+libraryGraph-showUnlinked = Mostra note non collegate
+libraryGraph-searchPlaceholder = Cerca note…
+libraryGraph-rescan = Riscansiona
+libraryGraph-rescan-tooltip = Ricostruisci l'indice dei collegamenti per tutte le note
+libraryGraph-indexing = Indicizzazione delle note… { $done }/{ $total }
+libraryGraph-stats = { $notes } note · { $links } collegamenti
+libraryGraph-empty = Nessun collegamento tra note trovato. Crea collegamenti tra le note per vederli qui.

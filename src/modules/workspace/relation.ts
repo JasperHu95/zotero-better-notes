@@ -30,6 +30,14 @@ export function getNoteRelationSectionOptions(): _ZoteroTypes.ItemPaneManagerSec
 </linkset>`,
     sectionButtons: [
       {
+        type: "openLibraryGraph",
+        icon: `chrome://${config.addonRef}/content/icons/full-16.svg`,
+        l10nID: `${config.addonRef}-note-relation-openLibraryGraph`,
+        onClick: () => {
+          addon.hooks.onShowLibraryGraph();
+        },
+      },
+      {
         type: "refreshGraph",
         icon: "chrome://zotero/skin/16/universal/sync.svg",
         l10nID: `${config.addonRef}-note-relation-refresh`,

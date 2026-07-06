@@ -129,3 +129,13 @@ userGuide-workspaceNoteInfo-desc = Du kannst die Tags, Verbindungen und Links de
 userGuide-finish-title = Wir sind fertig!
 userGuide-finish-desc = Viel Spaß beim Notieren mit Better Notes!
     Du kannst dieses Tutorial über das Hilfe-Menü jederzeit erneut starten.
+
+libraryGraph-title = Notiz-Beziehungsgraph
+libraryGraph-allLibraries = Alle Bibliotheken
+libraryGraph-showUnlinked = Nicht verknüpfte Notizen anzeigen
+libraryGraph-searchPlaceholder = Notizen durchsuchen…
+libraryGraph-rescan = Neu scannen
+libraryGraph-rescan-tooltip = Verknüpfungsindex für alle Notizen neu aufbauen
+libraryGraph-indexing = Notizen werden indiziert… { $done }/{ $total }
+libraryGraph-stats = { $notes } Notizen · { $links } Verknüpfungen
+libraryGraph-empty = Keine Notiz-Verknüpfungen gefunden. Erstellen Sie Links zwischen Notizen, um sie hier zu sehen.

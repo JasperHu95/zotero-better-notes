@@ -26,3 +26,6 @@ note-outbound-sidenav =
     .tooltiptext = 出链
 note-outbound-refresh =
     .tooltiptext = 刷新
+
+note-relation-openLibraryGraph =
+    .tooltiptext = 打开文库关系图谱
