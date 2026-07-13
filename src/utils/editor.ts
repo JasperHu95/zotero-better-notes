@@ -137,9 +137,8 @@ function replace(
 }
 
 /**
- * An alternate note view (the markdown mode) that can take over view-level
- * editor operations while it presents the note. A handler returns true when
- * it handled the call; the rich-text implementation runs otherwise.
+ * An alternate note view (the markdown mode) taking over editor operations
+ * while it presents the note; handlers return true when they handled a call.
  */
 interface EditorViewBackend {
   scrollToLine?: (
@@ -150,6 +149,8 @@ interface EditorViewBackend {
     editor: Zotero.EditorInstance,
     sectionName: string,
   ) => Promise<boolean>;
+  /** The note line (top-level block index) at the view's cursor. */
+  lineAtCursor?: (editor: Zotero.EditorInstance) => number | undefined;
 }
 
 let viewBackend: EditorViewBackend | undefined;
@@ -239,6 +240,16 @@ function getRangeAtCursor(editor: Zotero.EditorInstance) {
 }
 
 function getLineAtCursor(editor: Zotero.EditorInstance) {
+  // The alternate view knows its own cursor (e.g. the markdown source
+  // cursor); the rich-text position below is stale while it is active.
+  try {
+    const line = viewBackend?.lineAtCursor?.(editor);
+    if (typeof line === "number" && line >= 0) {
+      return line;
+    }
+  } catch (e) {
+    ztoolkit.log("[BN editor] view backend cursor error", e);
+  }
   const position = getPositionAtCursor(editor);
   if (position < 0) {
     return -1;

@@ -1,9 +1,6 @@
 /**
- * Hover-intent timing shared by the preview popups (the rich-text link
- * preview and the markdown chip preview): open after a short dwell on a
- * target, close a moment after the pointer leaves — unless it moved onto
- * the popup itself. The host owns target detection and the popup; this
- * only decides when to open and close.
+ * Hover-intent timing shared by the preview popups: open after a dwell,
+ * close shortly after leaving unless the popup itself is hovered.
  */
 
 export interface HoverIntentHost<T> {

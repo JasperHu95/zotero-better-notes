@@ -12,9 +12,8 @@ export interface MagicKeyOptions {
 }
 
 /**
- * Callbacks into the privileged side, passed to create() via cloneInto.
- * Data crossing the chrome/content boundary must be primitives, so
- * structured payloads travel as JSON strings in both directions.
+ * Callbacks into the privileged side (cloneInto): structured payloads cross
+ * the boundary as JSON strings — only primitives travel safely.
  */
 export interface MarkdownEditorCallbacks {
   /** Called on every document change (used for the debounced note save). */
@@ -33,9 +32,8 @@ export interface MarkdownEditorCallbacks {
   /** Opens a link clicked inside a preview popup. */
   openURL?: (url: string) => void;
   /**
-   * Provides the buttons for a chip's click popup (the note editor's
-   * citation/highlight/image popups). Neighbor chips are passed along for
-   * the annotation-citation pair rules.
+   * Buttons for a chip's click popup; neighbor chips ride along for the
+   * annotation-citation pair rules.
    */
   getNodeActions?: (
     kind: ZNodeKind,
@@ -44,9 +42,8 @@ export interface MarkdownEditorCallbacks {
     setActions: (actionsJSON: string) => void,
   ) => void;
   /**
-   * Runs a chip popup action. applyEdit replaces the chip's markdown
-   * source; trimBefore also removes the whitespace separating it from the
-   * previous chip (the note editor's "hide citation" removes the pair gap).
+   * Runs a chip popup action; applyEdit replaces the chip's source, and
+   * trimBefore also removes the gap to the previous chip.
    */
   onNodeAction?: (
     id: string,
@@ -62,9 +59,8 @@ export interface MarkdownEditorCallbacks {
   /** Runs a privileged magic-key command (insertTemplate, copyLineLink, ...). */
   onMagicCommand?: (id: string) => void;
   /**
-   * Converts pasted HTML (e.g. copied note content) to markdown, importing
-   * note-specific data such as embedded images into the target note.
-   * Called with the plain-text flavor as a fallback.
+   * Converts pasted HTML to markdown, importing note-specific data (e.g.
+   * embedded images); called with the plain-text flavor as fallback.
    */
   convertPaste?: (
     html: string,

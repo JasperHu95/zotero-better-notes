@@ -1,8 +1,6 @@
 /**
- * Per-container registries: each markdown editor is keyed by the container
- * element it was created in. Kept in one module (with type-only imports of
- * the manager classes) so the managers can reference each other's registry
- * without runtime import cycles.
+ * Per-container registries (type-only manager imports), so managers can
+ * reach each other without runtime import cycles.
  */
 import type { EditorView } from "@codemirror/view";
 import type { PreviewManager } from "./preview";

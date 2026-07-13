@@ -1,10 +1,6 @@
 /**
- * Magic-key command palette: `/` (or Mod-/) opens the same searchable
- * command popup the rich-text editor has (extras/editor/magicKey.ts). The
- * command set and the list interaction are shared (extras/shared); this
- * host anchors the popup at the CodeMirror cursor, runs the formatting
- * commands as markdown edits, and forwards the action commands to the
- * privileged side.
+ * Magic-key palette host for the markdown editor: shared command set and
+ * list UI (extras/shared), CodeMirror anchoring and command execution here.
  */
 import type { EditorView } from "@codemirror/view";
 import type { EditorState, Transaction } from "@codemirror/state";

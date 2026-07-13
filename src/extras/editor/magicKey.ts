@@ -44,9 +44,8 @@ interface MagicCommand {
   enabled?: (state: EditorState) => boolean;
 }
 
-// Custom commands registered from the main context via
-// BetterNotesEditorAPI.setMagicKeyCommands. Shared by all PluginState
-// instances of this editor window.
+// Custom commands registered from the main context via setMagicKeyCommands;
+// shared by all PluginState instances of this editor window.
 let customCommands: MagicCommand[] = [];
 
 function setMagicKeyCommands(commands: MagicCommand[]) {
@@ -59,9 +58,8 @@ class PluginState {
   options: MagicKeyOptions;
 
   /**
-   * Editor-side implementations for the shared command table
-   * (extras/shared/magicCommands.ts); metadata entries without an
-   * implementation here are not shown.
+   * Editor-side implementations for the shared command table; metadata
+   * entries without an implementation here are not shown.
    */
   _commandActions: Record<string, Pick<MagicCommand, "command" | "enabled">> = {
     insertTemplate: {

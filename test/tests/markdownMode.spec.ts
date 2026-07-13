@@ -478,8 +478,13 @@ describe("MarkdownMode", function () {
     const cursor = mdEditor.getCursor(container);
     assert.equal(source.slice(cursor, cursor + 5), "gamma");
 
+    // The editor API reads the note line from the markdown cursor while the
+    // mode is active (the settings menu's copy-link labels rely on this)
+    assert.equal(addon.api.editor.getLineAtCursor(editor), 2);
+
     // Move the markdown cursor into the fourth block and toggle back
     mdEditor.setCursor(container, source.indexOf("delta"));
+    assert.equal(addon.api.editor.getLineAtCursor(editor), 3);
     await addon.api.editor.toggleMarkdownMode(editor);
 
     await wait.waitUtilAsync(
@@ -721,17 +726,33 @@ describe("MarkdownMode", function () {
     await wait.waitUtilAsync(() => !doc.querySelector(".bn-md-magic"));
     assert.include(addon.api.editor.getMarkdownSource(editor)!, "# Beta line");
 
-    // Custom commands registered via the addon API appear and run
+    // Custom commands registered via the addon API appear and run. Their
+    // handler (like copy line/section link) reads the note cursor, which
+    // must reflect the markdown cursor even with unsaved edits in flight —
+    // the command flushes and waits for the hidden editor before syncing.
     const commandID = "test.md.magicKeyCommand";
     let executedWith: Zotero.EditorInstance | undefined;
+    let lineAtCursor = -1;
     addon.api.editor.registerMagicKeyCommand({
       id: commandID,
       title: "Test MD Magic Command",
       handler: (ed: Zotero.EditorInstance) => {
         executedWith = ed;
+        lineAtCursor = addon.api.editor.getLineAtCursor(ed);
       },
     });
     try {
+      // Dirty the source, then put the markdown cursor on the "Beta" block
+      const source2 = addon.api.editor.getMarkdownSource(editor)!;
+      addon.api.editor.setMarkdownSource(
+        editor,
+        source2.trimEnd() + "\n\nTail edit\n",
+      );
+      mdEditor.setCursor(
+        container,
+        addon.api.editor.getMarkdownSource(editor)!.indexOf("Beta"),
+      );
+
       await openPalette();
       const item = doc.querySelector(
         `.bn-md-magic .popup-item[data-command="custom:${commandID}"]`,
@@ -742,6 +763,7 @@ describe("MarkdownMode", function () {
       );
       await wait.waitUtilAsync(() => !!executedWith);
       assert.equal(executedWith, editor);
+      assert.equal(lineAtCursor, 1, "note cursor matches the markdown cursor");
       assert.notExists(doc.querySelector(".bn-md-magic"));
     } finally {
       addon.api.editor.unregisterMagicKeyCommand(commandID);

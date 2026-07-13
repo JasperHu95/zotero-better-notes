@@ -1,10 +1,6 @@
 /**
- * Zotero node chips: citations, annotations (highlights), note links, and
- * images travel through the md<->note conversion as raw inline HTML spans
- * carrying data-citation / data-annotation / ztype attributes. Showing that
- * HTML in the source view is unreadable and fragile to hand-edits, so each
- * run is rendered as one atomic chip instead (the underlying text is
- * unchanged).
+ * Zotero node chips: citation/annotation/note-link/image HTML runs render
+ * as atomic chips (the underlying source text is unchanged).
  */
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
 import type { DecorationSet } from "@codemirror/view";

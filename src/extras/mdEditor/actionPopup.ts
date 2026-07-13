@@ -8,10 +8,8 @@ import { previewManagers, views } from "./registries";
 import { tryOrRetryNextTick } from "../shared/utils";
 
 /**
- * Re-locate a chip's source range: the position captured when its popup
- * opened, revalidated against the current doc (async actions like the
- * citation dialog can outlive other edits), falling back to the nearest
- * occurrence of the raw text.
+ * Re-locate a chip's source range: the captured position revalidated
+ * against the current doc, else the nearest occurrence of the raw text.
  */
 function locateChipRange(view: EditorView, from: number, raw: string) {
   if (
@@ -36,10 +34,8 @@ function locateChipRange(view: EditorView, from: number, raw: string) {
 }
 
 /**
- * Click popup with actions for a Zotero node chip, mirroring the rich-text
- * editor's citation/highlight/image popups (same .popup-container/.popup
- * markup and button structure, so the note-editor stylesheet gives it the
- * native look). The available actions come from the privileged side.
+ * Click popup with actions for a chip, in the note editor's own popup
+ * markup and styles; the available actions come from the privileged side.
  */
 export class ActionPopupManager {
   popup: HTMLDivElement | null = null;
@@ -85,8 +81,7 @@ export class ActionPopupManager {
   }
 
   /**
-   * Chip decorations adjacent to the one at `from` with nothing but
-   * whitespace or a <br> between (and no paragraph break) — the markdown
+   * Adjacent chips separated only by whitespace/<br> — the markdown
    * counterpart of the note editor's annotation-citation pair scan.
    */
   private findNeighbors(from: number) {

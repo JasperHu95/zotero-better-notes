@@ -1,10 +1,6 @@
 /**
- * The CodeMirror editor itself: creation/teardown and the accessors the
- * privileged side drives it with (value, selection, scroll, history).
- *
- * Highlighting uses @lezer/highlight's classHighlighter, which tags tokens
- * with `tok-*` classes; the colors live in styles/editor.css so they can
- * follow the note-editor's light/dark theme variables.
+ * The CodeMirror editor: creation/teardown and the accessors the privileged
+ * side drives it with. Token colors (tok-*) live in styles/editor.css.
  */
 import { EditorView, keymap, highlightActiveLine } from "@codemirror/view";
 import { EditorState, EditorSelection, Transaction } from "@codemirror/state";
@@ -42,11 +38,8 @@ import { allowScrollChange, guardScrollReset } from "./scrollGuard";
 import { applyCommand } from "./commands";
 
 /**
- * classHighlighter covers code-ish tokens (strings, keywords, comments in
- * embedded HTML), but misses several markdown-specific tags — monospace
- * (inline code / code blocks), strikethrough, quote, and the *_/#/> marks
- * (processingInstruction). This adds tok-* classes for those, matching the
- * naming scheme so styles/editor.css styles both from one place.
+ * tok-* classes for markdown-specific tags classHighlighter misses
+ * (monospace, strikethrough, quote, marks), styled from styles/editor.css.
  */
 const markdownTagHighlighter = tagHighlighter([
   { tag: tags.monospace, class: "tok-monospace" },
@@ -58,12 +51,8 @@ const markdownTagHighlighter = tagHighlighter([
 ]);
 
 /**
- * Build the editor in `container`.
- *
- * @param stateJSON Serialized state from getStateJSON(); restores the undo
- *   history when the markdown mode is re-entered.
- * @param optionsJSON JSON { magicKey?: boolean, magicKeyShortcut?: boolean }
- *   (primitives only cross the chrome/content boundary safely).
+ * Build the editor. stateJSON (from getStateJSON) restores the undo history
+ * on re-entry; optionsJSON is { magicKey?, magicKeyShortcut? } as JSON.
  */
 export function create(
   container: HTMLElement,
@@ -136,12 +125,8 @@ export function create(
     syntaxHighlighting(classHighlighter),
     syntaxHighlighting(markdownTagHighlighter),
     zNodeField,
-    // Pasting rich content (copied note content in particular) converts it
-    // to markdown instead of falling back to the plain-text flavor, and the
-    // files flavor (a screenshot, an image file copied from the file system)
-    // goes through the same converter as data-URI images, which imports
-    // them into the note; plain-only pastes keep CodeMirror's default
-    // behavior.
+    // Paste: rich HTML converts to markdown, image files go through the
+    // same converter as data-URI images; plain text keeps CM's default.
     EditorView.domEventHandlers({
       paste: (event) => {
         const clipboardData = event.clipboardData;
@@ -217,9 +202,8 @@ export function create(
       }
     }),
   ];
-  // A restored state carries the undo history of the previous markdown-mode
-  // session. Its doc may be stale (saving normalizes the note, which shifts
-  // the regenerated markdown); it is diffed up to date below.
+  // A restored state carries the previous session's undo history; its doc
+  // may be stale (saving normalizes the note) and is diffed up to date below.
   let restored: EditorState | undefined;
   if (stateJSON) {
     try {
@@ -312,10 +296,8 @@ export function getValue(container: HTMLElement) {
 }
 
 /**
- * Smallest single change turning oldText into newText (common prefix/suffix
- * trimmed). Dispatching this instead of a whole-document replace lets
- * CodeMirror map the selection and its scroll anchor through the change, so
- * the view doesn't jump.
+ * Smallest single change turning oldText into newText, so CodeMirror maps
+ * the selection and scroll anchor through it instead of jumping.
  */
 function diffReplace(oldText: string, newText: string) {
   let start = 0;
@@ -420,9 +402,8 @@ export function setScroll(container: HTMLElement, top: number) {
     }
     allowScrollChange(container, top);
     view.scrollDOM.scrollTop = top;
-    // A freshly created view may not have measured its content height yet,
-    // in which case the assignment above is clamped; re-apply after the
-    // measure.
+    // A fresh view may not have measured its height yet (the assignment is
+    // clamped); re-apply after the measure.
     view.requestMeasure({
       read: () => null,
       write: () => {

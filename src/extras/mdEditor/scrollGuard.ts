@@ -25,12 +25,8 @@ export function allowScrollChange(container: HTMLElement, stable?: number) {
 }
 
 /**
- * The editor's environment occasionally resets the scroll position to 0
- * behind CodeMirror's back — observed after note saves, when the hosting
- * pane refreshes and heights are re-measured, and when the scroller is
- * hidden (Gecko zeroes hidden scrollers). Track the last stable position
- * and put it back when a reset arrives that no user gesture or editor API
- * call explains.
+ * The environment occasionally resets the scroll to 0 behind CodeMirror's
+ * back; restore the last stable position unless a user gesture explains it.
  */
 export function guardScrollReset(container: HTMLElement, view: EditorView) {
   const guard: ScrollGuardState = {
@@ -61,9 +57,8 @@ export function guardScrollReset(container: HTMLElement, view: EditorView) {
         return;
       }
       if (allowed) {
-        // One-shot: the allowance covers the intended scroll only, so a
-        // stray reset arriving right after it is still caught. User
-        // gestures re-arm it on every event.
+        // One-shot: covers the intended scroll only, so a stray reset right
+        // after is still caught; user gestures re-arm on every event.
         guard.allowUntil = 0;
       }
       guard.stable = top;

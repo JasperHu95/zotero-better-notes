@@ -8,9 +8,8 @@ import { chipData } from "./zNodes";
 import { actionPopups } from "./registries";
 
 /**
- * Hover previews for the Zotero node chips, mirroring the rich-text editor's
- * note-link preview popup (same .popup-container/.popup markup, so the
- * note-editor stylesheet gives it the native look).
+ * Hover previews for the chips, in the note editor's own popup markup and
+ * styles.
  */
 export class PreviewManager {
   private popup: HTMLDivElement | null = null;
@@ -75,9 +74,8 @@ export class PreviewManager {
     popup.className = "popup-container bn-md-preview";
     popup.innerHTML = `<div class="popup popup-top primary-editor"><div class="bn-md-preview-body"></div></div>`;
     popup.style.display = "none";
-    // The layout-critical styles are inlined so the popup geometry never
-    // depends on the injected stylesheet (which only themes it): fixed
-    // positioning in viewport coordinates, bounded size.
+    // Layout-critical styles are inlined so the popup geometry never
+    // depends on the injected stylesheet (which only themes it).
     const inner = popup.querySelector(".popup") as HTMLDivElement;
     Object.assign(inner.style, {
       position: "fixed",
@@ -89,11 +87,8 @@ export class PreviewManager {
       // The note-editor's .popup base style is display: flex; stack
       // vertically regardless of the injected stylesheet's state.
       flexDirection: "column",
-      // No overflow here: the .popup carries the popover arrow as
-      // out-of-box pseudo-elements, which an overflow would count as
-      // scrollable — the resulting scrollbar steals width from a box sized
-      // exactly to its text and wraps it mid-word. Scrolling happens on the
-      // inner body instead.
+      // Keep overflow off the .popup: its popover-arrow pseudo-elements
+      // would count as scrollable and the scrollbar wraps text mid-word.
       overflow: "visible",
     });
     const body = popup.querySelector(".bn-md-preview-body") as HTMLDivElement;
@@ -102,9 +97,8 @@ export class PreviewManager {
       maxHeight: "350px",
       overflow: "hidden auto",
     });
-    // Parent it to the body: fixed positioning resolves against the
-    // viewport only when no ancestor forms a containing block (transforms,
-    // contain, filters), which the editor internals are free to use.
+    // Parent to the body: fixed positioning needs no ancestor forming a
+    // containing block (transforms, contain, filters).
     document.body.appendChild(popup);
     this.popup = popup;
 

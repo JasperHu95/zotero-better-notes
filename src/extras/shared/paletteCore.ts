@@ -1,9 +1,6 @@
 /**
- * The searchable command list shared by the rich-text and markdown magic
- * palettes: item rendering, filtering with bold-matched titles,
- * exact-shortcut auto-select, arrow/Tab keyboard navigation, and
- * click/Enter execution. The host owns the popup shell, its positioning,
- * and what executing or dismissing means.
+ * The searchable command list shared by both magic palettes: rendering,
+ * filtering, keyboard navigation. The host owns popup shell and execution.
  */
 
 /** One palette row: display data and the keys it is found by. */

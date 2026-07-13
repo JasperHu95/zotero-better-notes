@@ -305,9 +305,8 @@ function toggleOrderedList(view: EditorView) {
 }
 
 /**
- * Toggle GFM task-list markers on the selected lines: plain lines become
- * `- [ ] ` items, existing task items lose the marker (plain bullets keep
- * their bullet and gain the checkbox).
+ * Toggle GFM task markers on the selected lines; plain bullets keep their
+ * bullet and gain the checkbox.
  */
 function toggleTaskListLines(view: EditorView) {
   const state = view.state;

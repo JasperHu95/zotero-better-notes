@@ -1,18 +1,14 @@
 /**
- * Canonical magic-key command metadata, shared by the rich-text palette
- * (extras/editor/magicKey.ts) and the markdown palette
- * (extras/mdEditor/magicKey.ts). Each palette maps the ids to its
- * own implementations; this table only defines what exists, in which order,
- * and how it is found (ids double as editorStrings messageIds).
+ * Canonical magic-key command metadata shared by both palettes: what
+ * exists, in which order, how it is found (ids double as messageIds).
  */
 
 export interface MagicCommandMeta {
   id: string;
   searchParts: string[];
   /**
-   * "format" commands edit the document and are implemented inside each
-   * editor; "action" commands need app context (they run in the privileged
-   * side when the markdown mode hosts them).
+   * "format" commands edit the document in-editor; "action" commands need
+   * app context (the privileged side in markdown mode).
    */
   kind: "format" | "action";
 }

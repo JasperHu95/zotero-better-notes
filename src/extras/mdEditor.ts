@@ -1,14 +1,6 @@
 /**
- * Markdown source editor with syntax highlighting for the Better Notes
- * markdown mode, injected into the note-editor iframe on demand.
- *
- * Self-contained CodeMirror 6 bundle: it never touches the note-editor's
- * ProseMirror classes, so it is safe next to the native editor (foreign
- * ProseMirror objects are not — see editor/plugins.ts).
- *
- * This entry only assembles the public API; the implementation lives in
- * ./mdEditor/ (editor core, formatting commands, chip decorations and
- * popups, magic-key palette, scroll guard).
+ * Entry of the markdown source editor bundle (implementation in ./mdEditor/):
+ * self-contained CodeMirror 6, sharing no classes with the note editor.
  */
 import {
   create,

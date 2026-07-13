@@ -3,11 +3,8 @@
  */
 
 /**
- * Run an operation now, retrying once on the next tick if it throws — for
- * calls that can collide with a busy cycle in the callee (e.g. CodeMirror
- * rejects updates while an update or measure is in progress, and our calls
- * come from the privileged side at arbitrary times). The operation must
- * read the current state itself so a retry works on fresh data.
+ * Try an operation now and once more next tick if it throws (e.g. CodeMirror
+ * rejects updates mid-cycle); the op must re-read state so the retry is fresh.
  */
 export function tryOrRetryNextTick(op: () => void) {
   try {
