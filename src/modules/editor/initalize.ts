@@ -7,6 +7,13 @@ import { initEditorPopup } from "./popup";
 import { initEditorToolbar } from "./toolbar";
 import { initEditorSections } from "./section";
 import { initEditorMagicKeyCommands } from "./magicKey";
+import {
+  initEditorMarkdownMode,
+  registerMarkdownEditorBackend,
+  registerMarkdownModePrefObserver,
+  unregisterMarkdownEditorBackend,
+  unregisterMarkdownModePrefObserver,
+} from "./markdownMode";
 import { config } from "../../../package.json";
 
 let prefsObserver = Symbol();
@@ -18,12 +25,21 @@ export function registerEditorInstanceHook() {
     patcher: (origin) =>
       function (this: typeof Zotero.Notes, instance: Zotero.EditorInstance) {
         origin.apply(this, [instance]);
-        onEditorInstanceCreated(instance);
+        // Fire-and-forget: a rejection here would otherwise surface as an
+        // unhandled promise rejection (opaque `undefined` for content-side
+        // errors during editor reinitialization).
+        onEditorInstanceCreated(instance).catch((e) =>
+          ztoolkit.log("[BN editor init] error", e),
+        );
       },
     enabled: true,
     pluginID: config.addonID,
   });
-  Zotero.Notes._editorInstances.forEach(onEditorInstanceCreated);
+  Zotero.Notes._editorInstances.forEach((instance) => {
+    onEditorInstanceCreated(instance).catch((e) =>
+      ztoolkit.log("[BN editor init] error", e),
+    );
+  });
 
   // For unknown reasons, the css becomes undefined after font size change
   prefsObserver = Zotero.Prefs.registerObserver("note.fontSize", () => {
@@ -31,10 +47,14 @@ export function registerEditorInstanceHook() {
       injectEditorCSS(editor._iframeWindow);
     });
   });
+  registerMarkdownModePrefObserver();
+  registerMarkdownEditorBackend();
 }
 
 export function unregisterEditorInstanceHook() {
   Zotero.Prefs.unregisterObserver(prefsObserver);
+  unregisterMarkdownModePrefObserver();
+  unregisterMarkdownEditorBackend();
 }
 
 async function onEditorInstanceCreated(editor: Zotero.EditorInstance) {
@@ -65,6 +85,7 @@ async function onEditorInstanceCreated(editor: Zotero.EditorInstance) {
     initEditorPlugins(editor);
     await initEditorMagicKeyCommands(editor);
     await initEditorSections(editor);
+    await initEditorMarkdownMode(editor);
   } catch (e) {
     const isDead =
       !Zotero.Notes._editorInstances.includes(editor) ||

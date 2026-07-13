@@ -119,10 +119,19 @@ async function note2md(
     withYAMLHeader?: boolean;
     cachedYAMLHeader?: Record<string, any>;
     skipSavingImages?: boolean;
+    // Skip the user-editable [ExportMDFileContent] template. Used by the
+    // in-editor markdown mode, where an export-oriented transform would be
+    // baked back into the note on save.
+    skipTemplate?: boolean;
+    // Convert this HTML instead of the note's own content (e.g. clipboard
+    // content pasted into the markdown mode); noteItem still provides the
+    // library context.
+    noteContent?: string;
   } = {},
 ) {
-  const noteStatus = addon.api.sync.getNoteStatus(noteItem.id)!;
-  const rehype = await note2rehype(noteStatus.content);
+  const rehype = await note2rehype(
+    options.noteContent ?? addon.api.sync.getNoteStatus(noteItem.id)!.content,
+  );
   processN2MRehypeHighlightNodes(
     getN2MRehypeHighlightNodes(rehype as HRoot),
     NodeMode.direct,
@@ -148,15 +157,17 @@ async function note2md(
   if (typeof md !== "string") {
     throw new Error("Parsing Error: Rehype2Remark");
   }
-  try {
-    md =
-      (await addon.api.template.runTemplate(
-        "[ExportMDFileContent]",
-        "noteItem, mdContent",
-        [noteItem, md],
-      )) ?? md;
-  } catch (e) {
-    ztoolkit.log(e);
+  if (!options.skipTemplate) {
+    try {
+      md =
+        (await addon.api.template.runTemplate(
+          "[ExportMDFileContent]",
+          "noteItem, mdContent",
+          [noteItem, md],
+        )) ?? md;
+    } catch (e) {
+      ztoolkit.log(e);
+    }
   }
 
   if (options.withYAMLHeader) {
@@ -944,24 +955,31 @@ async function processM2NRehypeImageNodes(
     if (isImport) {
       // If image is already an attachment of note, skip import
       if (!attKeys.includes(node.properties.dataAttachmentKey)) {
-        // We encode the src in md2remark and decode it here.
-        let src = formatPath(decodeURIComponent(node.properties.src));
-        const srcType = (src as string).startsWith("data:")
-          ? "b64"
-          : (src as string).startsWith("http")
-            ? "url"
-            : "file";
-        if (srcType === "file") {
-          if (!PathUtils.isAbsolute(src)) {
-            src = jointPath(fileDir, src);
+        // A single bad image (corrupted data URL, missing file) must not
+        // fail the whole conversion — skip it and keep the rest.
+        try {
+          // We encode the src in md2remark and decode it here.
+          let src = formatPath(decodeURIComponent(node.properties.src));
+          const srcType = (src as string).startsWith("data:")
+            ? "b64"
+            : (src as string).startsWith("http")
+              ? "url"
+              : "file";
+          if (srcType === "file") {
+            if (!PathUtils.isAbsolute(src)) {
+              src = jointPath(fileDir, src);
+            }
+            if (!(await fileExists(src))) {
+              ztoolkit.log("parse image, path invalid", src);
+              continue;
+            }
           }
-          if (!(await fileExists(src))) {
-            ztoolkit.log("parse image, path invalid", src);
-            continue;
-          }
+          const key = await importImageToNote(noteItem, src, srcType);
+          node.properties.dataAttachmentKey = key;
+        } catch (e) {
+          ztoolkit.log("Failed to import image, skipping", e);
+          continue;
         }
-        const key = await importImageToNote(noteItem, src, srcType);
-        node.properties.dataAttachmentKey = key;
       }
     }
     delete node.properties.src;

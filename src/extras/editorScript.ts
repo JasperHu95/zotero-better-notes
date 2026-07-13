@@ -322,6 +322,89 @@ function updateHeadingsInRange(from: number, to: number, levelOffset: number) {
   };
 }
 
+/**
+ * Document position at the given text-character offset inside the given
+ * top-level block. Offsets past the block's text land at the block end;
+ * invalid block indexes are clamped.
+ */
+function resolveBlockTextOffset(
+  doc: Node,
+  blockIndex: number,
+  textOffset: number,
+): number {
+  const idx = Math.max(0, Math.min(blockIndex, doc.childCount - 1));
+  let blockPos = 0;
+  for (let i = 0; i < idx; i++) {
+    blockPos += doc.child(i).nodeSize;
+  }
+  const block = doc.child(idx);
+  let target = blockPos + 1;
+  let remaining = textOffset;
+  if (remaining > 0) {
+    block.descendants((node: Node, relPos: number) => {
+      if (remaining <= 0) {
+        return false;
+      }
+      if (node.isText) {
+        const len = node.text?.length || 0;
+        if (remaining <= len) {
+          target = blockPos + 1 + relPos + remaining;
+          remaining = 0;
+          return false;
+        }
+        remaining -= len;
+      }
+      return true;
+    });
+    if (remaining > 0) {
+      // Offset exceeds the block text; go to the block end.
+      target = blockPos + block.nodeSize - 1;
+    }
+  }
+  return Math.max(0, Math.min(target, doc.content.size));
+}
+
+/**
+ * Put the selection at the given text-character offsets inside the given
+ * top-level blocks. Used by the markdown mode to restore the cursor or
+ * selection when switching back to rich text. The head endpoint defaults to
+ * the anchor (a plain cursor).
+ */
+function setSelectionAtBlockTextOffset(
+  blockIndex: number,
+  textOffset: number,
+  headBlockIndex?: number,
+  headTextOffset?: number,
+) {
+  return (state: EditorState, dispatch?: EditorView["dispatch"]) => {
+    const doc = state.doc;
+    if (!doc.childCount) {
+      return;
+    }
+    const anchor = resolveBlockTextOffset(doc, blockIndex, textOffset);
+    const head =
+      typeof headBlockIndex === "number" && typeof headTextOffset === "number"
+        ? resolveBlockTextOffset(doc, headBlockIndex, headTextOffset)
+        : anchor;
+    // Use the editor's own selection class, not one from BN's bundled
+    // prosemirror — foreign instances break the native editor.
+    const _TextSelection = state.selection
+      .constructor as unknown as typeof TextSelection;
+    let selection;
+    try {
+      selection = _TextSelection.create(doc, anchor, head);
+    } catch (e) {
+      try {
+        selection = _TextSelection.create(doc, anchor);
+      } catch (e) {
+        selection = _TextSelection.near(doc.resolve(anchor));
+      }
+    }
+    const tr = state.tr.setSelection(selection).scrollIntoView();
+    dispatch && dispatch(tr);
+  };
+}
+
 function refocusEditor(callback: (args: void) => void) {
   const scrollTop = document.querySelector(".editor-core")!.scrollTop;
   const input = document.createElement("input");
@@ -395,6 +478,7 @@ export const BetterNotesEditorAPI = {
   getSliceFromHTML,
   getNodeFromHTML,
   setSelection,
+  setSelectionAtBlockTextOffset,
   initPlugins,
   setMagicKeyCommands,
   updateTableSize,

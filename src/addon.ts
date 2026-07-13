@@ -92,6 +92,17 @@ class Addon {
     hint: {
       silent: boolean;
     };
+    markdownMode: {
+      // Saved markdown view state (selection + scroll) so an editor
+      // reinitialization or tab reopen restores the reading position.
+      viewState: Map<
+        number,
+        { anchor: number; head: number; scrollTop: number }
+      >;
+      // Serialized markdown editor state (doc + undo history) captured when
+      // the mode is left, so re-entering it keeps the undo history.
+      history: Map<number, string>;
+    };
   } = {
     uid: Zotero.Utilities.randomString(8),
     alive: true,
@@ -145,6 +156,10 @@ class Addon {
     imageCache: {},
     hint: {
       silent: false,
+    },
+    markdownMode: {
+      viewState: new Map(),
+      history: new Map(),
     },
   };
   // Lifecycle hooks

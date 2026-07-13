@@ -408,7 +408,14 @@ function dataURLtoBlob(dataurl: string) {
   }
   const mime = matches[1];
   if (parts[0].indexOf("base64") !== -1) {
-    const bstr = ztoolkit.getGlobal("atob")(parts[1]);
+    let bstr;
+    try {
+      bstr = ztoolkit.getGlobal("atob")(parts[1]);
+    } catch (e) {
+      // Corrupted base64 (e.g. a data URL mangled by markdown round trips)
+      ztoolkit.log("dataURLtoBlob: invalid base64", e);
+      return null;
+    }
     let n = bstr.length;
     const u8arr = new Uint8Array(n);
     while (n--) {

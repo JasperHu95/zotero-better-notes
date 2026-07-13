@@ -1,5 +1,3 @@
-import { insert } from "../../utils/editor";
-
 export { formatMessage };
 
 function formatMessage(message: string, locale: string) {

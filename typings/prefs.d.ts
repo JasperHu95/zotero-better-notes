@@ -21,6 +21,8 @@ declare namespace _ZoteroTypes {
       "editor.useMagicKeyShortcut": boolean;
       "editor.useMarkdownPaste": boolean;
       "editor.useTaskList": boolean;
+      "editor.useMarkdownByDefault": boolean;
+      "editor.showMarkdownToggle": boolean;
       "editor.pinTableLeft": boolean;
       "editor.pinTableTop": boolean;
       "exportNotes.takeover": boolean;

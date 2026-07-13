@@ -27,6 +27,10 @@ editor-useMagicKeyShortcut =
     } + "/" 显示命令面板
 editor-useMarkdownPaste = 
     .label = 使用增强的Markdown粘贴
+editor-useMarkdownByDefault =
+    .label = 默认以 Markdown 模式打开笔记
+editor-showMarkdownToggle =
+    .label = 在编辑器工具栏显示 Markdown 模式切换按钮
 editor-pinTable-label = 鼠标滚动时固定表格的
 editor-pinTableLeft =
     .label = 首列

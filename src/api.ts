@@ -95,6 +95,13 @@ import {
   registerMagicKeyCommand,
   unregisterMagicKeyCommand,
 } from "./modules/editor/magicKey";
+import {
+  isMarkdownMode,
+  toggleMarkdownMode,
+  getMarkdownSource,
+  setMarkdownSource,
+  convertPastedHTMLToMarkdown,
+} from "./modules/editor/markdownMode";
 import { getWorkspaceByUID } from "./utils/workspace";
 import { getString } from "./utils/locale";
 import { showRestartHint } from "./utils/hint";
@@ -185,6 +192,11 @@ const editor = {
   unregisterSection: unregisterEditorSection,
   registerMagicKeyCommand,
   unregisterMagicKeyCommand,
+  isMarkdownMode,
+  toggleMarkdownMode,
+  getMarkdownSource,
+  setMarkdownSource,
+  convertPastedHTMLToMarkdown,
 };
 
 const note = {

@@ -16,6 +16,8 @@ pref("__prefsPrefix__.editor.useMagicKey", true);
 pref("__prefsPrefix__.editor.useMagicKeyShortcut", true);
 pref("__prefsPrefix__.editor.useMarkdownPaste", true);
 pref("__prefsPrefix__.editor.useTaskList", true);
+pref("__prefsPrefix__.editor.useMarkdownByDefault", false);
+pref("__prefsPrefix__.editor.showMarkdownToggle", true);
 pref("__prefsPrefix__.editor.pinTableLeft", true);
 pref("__prefsPrefix__.editor.pinTableTop", true);
 

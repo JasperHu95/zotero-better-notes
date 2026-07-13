@@ -12,7 +12,9 @@ export {
   move,
   replace,
   scroll,
+  scrollRichTextToLine,
   scrollToSection,
+  setEditorViewBackend,
   getEditorInstance,
   copyNoteLink,
   moveHeading,
@@ -134,24 +136,71 @@ function replace(
   )(core.view.state, core.view.dispatch);
 }
 
-function scroll(editor: Zotero.EditorInstance, lineIndex: number) {
+/**
+ * An alternate note view (the markdown mode) that can take over view-level
+ * editor operations while it presents the note. A handler returns true when
+ * it handled the call; the rich-text implementation runs otherwise.
+ */
+interface EditorViewBackend {
+  scrollToLine?: (
+    editor: Zotero.EditorInstance,
+    lineIndex: number,
+  ) => Promise<boolean>;
+  scrollToSection?: (
+    editor: Zotero.EditorInstance,
+    sectionName: string,
+  ) => Promise<boolean>;
+}
+
+let viewBackend: EditorViewBackend | undefined;
+
+/** Install (or, with undefined, remove) the alternate view backend. */
+function setEditorViewBackend(backend?: EditorViewBackend) {
+  viewBackend = backend;
+}
+
+/** Scroll the editor to a note line (top-level block index). */
+async function scroll(editor: Zotero.EditorInstance, lineIndex: number) {
+  try {
+    if (await viewBackend?.scrollToLine?.(editor, lineIndex)) {
+      return;
+    }
+  } catch (e) {
+    ztoolkit.log("[BN editor] view backend scroll error", e);
+  }
+  scrollRichTextToLine(editor, lineIndex);
+}
+
+/** The rich-text scroll; the markdown view manages its own scroll. */
+function scrollRichTextToLine(
+  editor: Zotero.EditorInstance,
+  lineIndex: number,
+) {
   const core = getEditorCore(editor);
   const dom = getDOMAtLine(editor, lineIndex);
   const offset = dom.offsetTop;
   core.view.dom.parentElement?.scrollTo(0, offset);
 }
 
+/** Scroll the editor to a section (heading text). */
 async function scrollToSection(
   editor: Zotero.EditorInstance,
   sectionName: string,
 ) {
+  try {
+    if (await viewBackend?.scrollToSection?.(editor, sectionName)) {
+      return;
+    }
+  } catch (e) {
+    ztoolkit.log("[BN editor] view backend scroll error", e);
+  }
   const item = editor._item;
   const sectionTree = await getNoteTreeFlattened(item);
   const sectionNode = sectionTree.find(
     (node) => node.model.name.trim() === sectionName.trim(),
   );
   if (!sectionNode) return;
-  scroll(editor, sectionNode.model.lineIndex);
+  scrollRichTextToLine(editor, sectionNode.model.lineIndex);
 }
 
 function getEditorInstance(noteId: number) {
@@ -590,9 +639,11 @@ function initEditorPlugins(editor: Zotero.EditorInstance) {
       ),
     ),
   );
-  EditorAPI.updateTableSize(
-    getPref("editor.pinTableLeft"),
-    getPref("editor.pinTableTop"),
+  safeCall(() =>
+    EditorAPI.updateTableSize(
+      getPref("editor.pinTableLeft"),
+      getPref("editor.pinTableTop"),
+    ),
   );
 }
 

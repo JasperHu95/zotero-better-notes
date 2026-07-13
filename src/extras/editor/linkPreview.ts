@@ -1,4 +1,5 @@
 import { EditorState, Plugin, PluginKey } from "prosemirror-state";
+import { HoverIntent } from "../shared/hoverIntent";
 import { Popup } from "./popup";
 
 export { initLinkPreviewPlugin, LinkPreviewOptions };
@@ -29,7 +30,11 @@ class PluginState {
 
   currentLink: string | null = null;
 
-  hasHover = false;
+  hoverIntent = new HoverIntent<string>({
+    open: () => this._openPopup(),
+    pinned: () => this.popup?.hasHover || false,
+    close: () => this._closePopup(),
+  });
 
   constructor(state: EditorState, options: LinkPreviewOptions) {
     this.state = state;
@@ -76,16 +81,20 @@ class PluginState {
         if (this.currentLink !== href) {
           this.node = target;
           this.currentLink = href;
-          this.hasHover = true;
-          this.tryOpenPopupByHover();
+          if (this.options.previewType === "hover") {
+            this.hoverIntent.hover(href);
+          } else {
+            // Key-toggled mode: track the link for the close scheduling
+            // without opening on dwell.
+            this.hoverIntent.track(href);
+          }
         }
       }
     }
 
     if (!isValid && this.currentLink) {
-      this.hasHover = false;
       this.currentLink = null;
-      this.tryClosePopup();
+      this.hoverIntent.unhover();
     }
   };
 
@@ -94,7 +103,7 @@ class PluginState {
       return;
     }
 
-    if (!this.hasHover || !this.currentLink) {
+    if (!this.hoverIntent.target || !this.currentLink) {
       return;
     }
     const isMac =
@@ -103,19 +112,6 @@ class PluginState {
       this.tryTogglePopupByKey();
     }
   };
-
-  tryOpenPopupByHover() {
-    if (this.options.previewType !== "hover") {
-      return;
-    }
-
-    const href = this.currentLink!;
-    setTimeout(() => {
-      if (this.currentLink === href) {
-        this._openPopup();
-      }
-    }, 300);
-  }
 
   tryTogglePopupByKey() {
     if (this._hasPopup()) {
@@ -163,7 +159,7 @@ class PluginState {
 
     this.popup.container.addEventListener("mouseleave", () => {
       this.currentLink = null;
-      this.tryClosePopup();
+      this.hoverIntent.unhover();
     });
 
     this.popup.container.addEventListener("click", (event) => {
@@ -178,16 +174,6 @@ class PluginState {
       }
       this._closePopup();
     });
-  }
-
-  tryClosePopup() {
-    setTimeout(() => {
-      console.log("Close Link Preview", this.currentLink, this.popup?.hasHover);
-      if (this.hasHover || this.popup?.hasHover) {
-        return;
-      }
-      this._closePopup();
-    }, 300);
   }
 
   _closePopup() {

@@ -7,7 +7,9 @@ import {
 } from "prosemirror-state";
 
 import { Popup } from "./popup";
-import { formatMessage } from "./editorStrings";
+import { formatMessage } from "../shared/editorStrings";
+import { MAGIC_COMMANDS } from "../shared/magicCommands";
+import { PaletteList } from "../shared/paletteCore";
 import { ResolvedPos } from "prosemirror-model";
 import { toggleTaskList } from "./taskList";
 
@@ -56,69 +58,56 @@ class PluginState {
 
   options: MagicKeyOptions;
 
-  _commands: MagicCommand[] = [
-    {
-      messageId: "insertTemplate",
-      searchParts: ["it", "insertTemplate"],
-      command: (state) => {
+  /**
+   * Editor-side implementations for the shared command table
+   * (extras/shared/magicCommands.ts); metadata entries without an
+   * implementation here are not shown.
+   */
+  _commandActions: Record<string, Pick<MagicCommand, "command" | "enabled">> = {
+    insertTemplate: {
+      command: () => {
         this.options.insertTemplate?.();
       },
     },
-    {
-      messageId: "outboundLink",
-      searchParts: ["ob", "obl", "outboundLink"],
-      command: (state) => {
+    outboundLink: {
+      command: () => {
         this.options.insertLink?.("outbound");
       },
     },
-    {
-      messageId: "inboundLink",
-      searchParts: ["ib", "ibl", "inboundLink"],
-      command: (state) => {
+    inboundLink: {
+      command: () => {
         this.options.insertLink?.("inbound");
       },
     },
-    {
-      messageId: "insertCitation",
-      searchParts: ["ic", "insertCitation"],
-      command: (state) => {
+    insertCitation: {
+      command: () => {
         getPlugin("citation")?.insertCitation();
       },
     },
-    {
-      messageId: "openAttachment",
-      searchParts: ["oa", "openAttachment"],
-      command: (state) => {
+    openAttachment: {
+      command: () => {
         this.options.openAttachment?.();
       },
-      enabled: (state) => {
+      enabled: () => {
         return this.options.canOpenAttachment?.() || false;
       },
     },
-    {
-      messageId: "copySectionLink",
-      searchParts: ["csl", "copySectionLink"],
-      command: (state) => {
+    copySectionLink: {
+      command: () => {
         this.options.copyLink?.("section");
       },
     },
-    {
-      messageId: "copyLineLink",
-      searchParts: ["cll", "copyLineLink"],
-      command: (state) => {
+    copyLineLink: {
+      command: () => {
         this.options.copyLink?.("line");
       },
     },
-    {
-      messageId: "refreshTemplates",
-      searchParts: ["rt", "refreshTemplates"],
-      command: (state) => {
+    refreshTemplates: {
+      command: () => {
         this.options.refreshTemplates?.();
       },
     },
-    {
-      messageId: "table",
-      searchParts: ["tb", "table"],
+    table: {
       command: (state) => {
         const input = prompt(
           "Enter the number of rows and columns, separated by a comma (e.g., 3,3)",
@@ -156,87 +145,67 @@ class PluginState {
         _currentEditorInstance._editorCore.view.dispatch(tr);
       },
     },
-    {
-      messageId: "heading1",
-      searchParts: ["h1", "heading1"],
-      command: (state) => {
+    heading1: {
+      command: () => {
         getPlugin()?.heading1.run();
       },
     },
-    {
-      messageId: "heading2",
-      searchParts: ["h2", "heading2"],
-      command: (state) => {
+    heading2: {
+      command: () => {
         getPlugin()?.heading2.run();
       },
     },
-    {
-      messageId: "heading3",
-      searchParts: ["h3", "heading3"],
-      command: (state) => {
+    heading3: {
+      command: () => {
         getPlugin()?.heading3.run();
       },
     },
-    {
-      messageId: "paragraph",
-      searchParts: ["pg", "paragraph"],
-      command: (state) => {
+    paragraph: {
+      command: () => {
         getPlugin()?.paragraph.run();
       },
     },
-    {
-      messageId: "monospaced",
-      searchParts: ["ms", "monospaced"],
-      command: (state) => {
+    monospaced: {
+      command: () => {
         getPlugin()?.codeBlock.run();
       },
     },
-    {
-      messageId: "bulletList",
-      searchParts: ["ul", "bulletList", "unorderedList"],
-      command: (state) => {
+    bulletList: {
+      command: () => {
         getPlugin()?.bulletList.run();
       },
     },
-    {
-      messageId: "orderedList",
-      searchParts: ["ol", "orderedList"],
-      command: (state) => {
+    orderedList: {
+      command: () => {
         getPlugin()?.orderedList.run();
       },
     },
-    {
-      messageId: "todoList",
-      searchParts: ["td", "todo", "todoList", "task", "checkbox"],
-      command: (state) => {
+    todoList: {
+      command: () => {
         toggleTaskList();
       },
     },
-    {
-      messageId: "blockquote",
-      searchParts: ["bq", "blockquote"],
-      command: (state) => {
+    blockquote: {
+      command: () => {
         getPlugin()?.blockquote.run();
       },
     },
-    {
-      messageId: "mathBlock",
-      searchParts: ["mb", "mathBlock"],
-      command: (state) => {
+    mathBlock: {
+      command: () => {
         getPlugin()?.math_display.run();
         setTimeout(() => {
           this._activateSelectedNodeEditor("math_display");
         }, 0);
       },
     },
-    {
-      messageId: "clearFormatting",
-      searchParts: ["cf", "clearFormatting"],
-      command: (state) => {
+    clearFormatting: {
+      command: () => {
         getPlugin()?.clearFormatting.run();
       },
     },
-  ];
+  };
+
+  _commands: MagicCommand[];
 
   get commands() {
     return [...this._commands, ...customCommands].filter((command) => {
@@ -249,7 +218,11 @@ class PluginState {
 
   popup: Popup | null = null;
 
-  selectedCommandIndex = 0;
+  paletteList: PaletteList | null = null;
+
+  // Commands as rendered when the popup opened: enabled() is re-evaluated
+  // live by the `commands` getter, so indexes must come from a snapshot.
+  _openCommands: MagicCommand[] = [];
 
   get node() {
     const node =
@@ -268,12 +241,19 @@ class PluginState {
     this.options = options;
 
     const locale = window.navigator.language || "en-US";
-    for (const key in this.commands) {
-      const command = this.commands[key];
-      if (command.messageId) {
-        command.title = formatMessage(command.messageId, locale);
-      }
-    }
+    this._commands = MAGIC_COMMANDS.flatMap((meta) => {
+      const action = this._commandActions[meta.id];
+      return action
+        ? [
+            {
+              messageId: meta.id,
+              title: formatMessage(meta.id, locale),
+              searchParts: meta.searchParts,
+              ...action,
+            },
+          ]
+        : [];
+    });
 
     this.update(state);
   }
@@ -353,6 +333,8 @@ class PluginState {
     if (this._hasPopup()) {
       return;
     }
+    // Snapshot: enabled() is evaluated once, when the popup opens.
+    this._openCommands = this.commands;
     this.popup = new Popup(document, this.popupClass, [
       document.createRange().createContextualFragment(`
 <style>
@@ -416,149 +398,37 @@ class PluginState {
 </style>
 <div class="popup-content">
   <input type="text" class="popup-input" placeholder="Search commands" />
-  <div class="popup-list" tabindex="-1">
-    ${Object.entries(this.commands)
-      .map(
-        ([id, command]) => `
-      <div class="popup-item" data-command-id="${id}">
-        <div class="popup-item-icon">${command.icon || ""}</div>
-        <div class="popup-item-title">${command.title}</div>
-        <div class="popup-item-key">${command.searchParts![0]}</div>
-      </div>`,
-      )
-      .join("")}
-  </div>
+  <div class="popup-list" tabindex="-1"></div>
 </div>`),
     ]);
 
     this.popup.layoutPopup(this);
 
-    // Focus the input
-    const input = this.popup.container.querySelector(
-      ".popup-input",
-    ) as HTMLInputElement;
-    input.focus();
-
-    // Handle input
-    input.addEventListener("input", (event) => {
-      const target = event.target as HTMLInputElement;
-      const value = target.value;
-      let numIndex = 0;
-      let itemIndex;
-      for (const [id, command] of Object.entries(this.commands)) {
-        const item = this.popup!.container.querySelector(
-          `.popup-item[data-command-id="${id}"]`,
-        ) as HTMLElement;
-        if (!value) {
-          item.hidden = false;
-          continue;
-        }
-        const matchedIndex = command
-          .title!.toLowerCase()
-          .indexOf(value.toLowerCase());
-        if (
-          matchedIndex < 0 &&
-          // Try to match the search parts
-          !command.searchParts?.some((part) =>
-            part.toLowerCase().includes(value.toLowerCase()),
-          )
-        ) {
-          item.hidden = true;
-        } else {
-          item.hidden = false;
-          if (
-            command.searchParts &&
-            command.searchParts[0].toLowerCase() === value.toLowerCase()
-          ) {
-            itemIndex = numIndex;
-          }
-        }
-        numIndex += 1;
-        if (matchedIndex >= 0) {
-          // Change the matched part to bold
-          const title = command.title!;
-          item.querySelector(".popup-item-title")!.innerHTML =
-            title.slice(0, matchedIndex) +
-            `<b>${title.slice(matchedIndex, matchedIndex + value.length)}</b>` +
-            title.slice(matchedIndex + value.length);
-        }
-      }
-      this._selectCommand(itemIndex);
-    });
-
-    input.addEventListener("keydown", (event) => {
-      if (event.key === "ArrowUp") {
-        this._selectCommand(this.selectedCommandIndex - 1, "up");
-        event.preventDefault();
-      } else if (event.key === "ArrowDown") {
-        this._selectCommand(this.selectedCommandIndex + 1, "down");
-        event.preventDefault();
-      } else if (event.key === "ArrowLeft") {
-        // Select the first command
-        this._selectCommand(this.commands.length, "up");
-        event.preventDefault();
-      } else if (event.key === "ArrowRight") {
-        // Select the last command
-        this._selectCommand(-1, "down");
-        event.preventDefault();
-      } else if (event.key === "Tab") {
-        // If has input, autocomplete the selected command to the first space
-        const command = this.commands[this.selectedCommandIndex];
-        if (!command) {
-          return;
-        }
-        if (!input.value) {
-          return;
-        }
-        const title = command.title!;
-        // Compute after the matched part
-        const matchedIndex = title
-          .toLowerCase()
-          .indexOf(input.value.toLowerCase());
-        const spaceIndex = title.indexOf(
-          " ",
-          matchedIndex + input.value.length,
-        );
-        if (spaceIndex >= 0) {
-          input.value = title.slice(0, spaceIndex);
-        } else {
-          input.value = title;
-        }
-        event.preventDefault();
-      } else if (event.key === "Enter") {
-        event.preventDefault();
-        const command = this.commands[this.selectedCommandIndex];
-        if (!command) {
-          this._closePopup();
-          return;
-        }
-        this._executeCommand(this.selectedCommandIndex, state);
-      } else if (event.key === "Escape") {
-        event.preventDefault();
+    this.paletteList = new PaletteList({
+      execute: (index) => {
+        this._executeCommand(index, state);
+      },
+      dismiss: (reason) => {
         this._closePopup();
-      } else if (event.key === "z" && (event.ctrlKey || event.metaKey)) {
-        this._closePopup();
-        if (this.options.enable) {
+        if (reason === "undo" && this.options.enable) {
           this.removeInputSlash(state);
         }
-      }
+      },
     });
-
-    this.popup.container.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const target = event.target as HTMLElement;
-      // Find the command
-      const item = target.closest(".popup-item") as HTMLElement;
-      if (!item) {
-        return;
-      }
-      const index = parseInt(item.dataset.commandId || "-1", 10);
-
-      this._executeCommand(index, state);
-    });
-
-    this._selectCommand(0);
+    this.paletteList.attach(
+      this.popup.container.querySelector(".popup-input") as HTMLInputElement,
+      this.popup.container.querySelector(".popup-list") as HTMLDivElement,
+      this._openCommands.map((command) => ({
+        id: command.messageId || command.title || "",
+        title: command.title || "",
+        icon: command.icon,
+        searchParts: command.searchParts?.length
+          ? command.searchParts
+          : [command.title || ""],
+      })),
+    );
+    // The items exist only after attach; re-anchor to the final size.
+    this.popup.layoutPopup(this);
   }
 
   _closePopup() {
@@ -569,6 +439,8 @@ class PluginState {
       .querySelectorAll(`.${this.popupClass}`)
       .forEach((el) => el.remove());
     this.popup = null;
+    this.paletteList = null;
+    this._openCommands = [];
     window.BetterNotesEditorAPI.refocusEditor();
   }
 
@@ -576,74 +448,10 @@ class PluginState {
     return !!document.querySelector(`.${this.popupClass}`);
   }
 
-  _selectCommand(index?: number, direction: "up" | "down" = "down") {
-    if (typeof index === "undefined") {
-      index = this.selectedCommandIndex;
-    }
-    // Unselect the previous command
-    this.popup!.container.querySelectorAll(".popup-item.selected").forEach(
-      (el) => {
-        el.classList.remove("selected");
-      },
-    );
-
-    if (!this._hasPopup()) {
-      return;
-    }
-    const items = this.popup!.container.querySelectorAll(
-      ".popup-item",
-    ) as NodeListOf<HTMLElement>;
-    if (items[index]?.hidden) {
-      // Will find the next visible item in the specified direction
-      if (direction === "up") {
-        for (let i = index - 1; i >= 0; i--) {
-          if (!items[i].hidden) {
-            index = i;
-            break;
-          }
-        }
-      } else if (direction === "down") {
-        for (let i = index + 1; i < items.length; i++) {
-          if (!items[i].hidden) {
-            index = i;
-            break;
-          }
-        }
-      }
-    }
-    if (index >= items.length) {
-      // Find the first visible item with :first-of-type
-      const item = this.popup!.container.querySelector(
-        ".popup-item:not([hidden])",
-      ) as HTMLElement;
-      index = parseInt(item?.dataset.commandId || "-1", 10);
-    } else if (index < 0) {
-      // Find the last visible item with :last-of-type
-      const visibleItems = this.popup!.container.querySelectorAll(
-        ".popup-item:not([hidden])",
-      );
-      const item = visibleItems[visibleItems.length - 1] as HTMLElement;
-      index = parseInt(item?.dataset.commandId || "-1", 10);
-    }
-
-    if (index < 0) {
-      this.selectedCommandIndex = -1;
-      return;
-    }
-    this.selectedCommandIndex = index;
-    items[index].classList.add("selected");
-    // Record the scroll position of the top document
-    const scrollTop = document.querySelector(".editor-core")!.scrollTop;
-    items[index].scrollIntoView({
-      block: "center",
-    });
-    // Restore the scroll position
-    document.querySelector(".editor-core")!.scrollTop = scrollTop;
-  }
-
   _executeCommand(index: number, state: EditorState) {
-    const command = this.commands[index];
+    const command = this._openCommands[index];
     if (!command) {
+      this._closePopup();
       return;
     }
     if (this.options.enable) {

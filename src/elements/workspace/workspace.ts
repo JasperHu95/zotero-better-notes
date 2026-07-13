@@ -1,5 +1,6 @@
 import { config } from "../../../package.json";
 import { ICONS } from "../../utils/config";
+import { scrollRichTextToLine } from "../../utils/editor";
 import {
   getPrefJSON,
   registerPrefObserver,
@@ -111,8 +112,12 @@ export class Workspace extends PluginCEBase implements VirtualWorkspace {
     this._initEditor();
 
     this.resizeOb = new ResizeObserver(() => {
-      if (!this.editor) return;
-      this._addon.api.editor.scroll(
+      // Rich-text-only re-anchor to the cursor line; the markdown view
+      // manages its own scroll on resize.
+      if (!this.editor || this._addon.api.editor.isMarkdownMode(this.editor)) {
+        return;
+      }
+      scrollRichTextToLine(
         this.editor,
         this._addon.api.editor.getLineAtCursor(this.editor),
       );

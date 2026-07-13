@@ -8,7 +8,9 @@ export function registerNotify(
         unregisterNotify(notifyID);
         return;
       }
-      addon.hooks.onNotify(...data);
+      // Fire-and-forget: a rejection here (e.g. a handler racing an item
+      // that was just erased) must not become an unhandled rejection.
+      addon.hooks.onNotify(...data).catch((e) => ztoolkit.log(e));
     },
   };
 

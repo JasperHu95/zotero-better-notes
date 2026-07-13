@@ -10,6 +10,7 @@ import { getString } from "../../utils/locale";
 import { openLinkCreator } from "../../utils/linkCreator";
 import { slice } from "../../utils/str";
 import { waitUtilAsync } from "../../utils/wait";
+import { isMarkdownMode, toggleMarkdownMode } from "./markdownMode";
 
 export async function initEditorToolbar(editor: Zotero.EditorInstance) {
   if (editor._disableUI) {
@@ -222,6 +223,22 @@ async function getMenuData(editor: Zotero.EditorInstance) {
       },
     },
   ];
+
+  if (!editor._readOnly) {
+    settingsMenuData.push({
+      id: makeId("settings-markdownMode"),
+      text: getString(
+        isMarkdownMode(editor)
+          ? "editor-toolbar-settings-exitMarkdown"
+          : "editor-toolbar-settings-enterMarkdown",
+      ),
+      callback: (e) => {
+        toggleMarkdownMode(e.editor).catch((err) =>
+          ztoolkit.log("[BN markdown mode] toggle error", err),
+        );
+      },
+    });
+  }
 
   if (currentLine >= 0) {
     settingsMenuData.push(

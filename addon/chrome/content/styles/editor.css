@@ -155,3 +155,351 @@ body.pin-table-left.pin-table-top
      handle cover it (making a checked box unclickable). */
   color: var(--fill-secondary);
 }
+
+/* Better Notes: markdown mode (edit the note as markdown source) */
+body.bn-md-mode .editor-core,
+body.bn-md-mode .findbar {
+  display: none !important;
+}
+/* Rich-text formatting controls act on the hidden ProseMirror view; the
+   markdown mode shows its own formatting toolbar instead. */
+body.bn-md-mode .toolbar .middle {
+  display: none;
+}
+/* Mirrors the native .middle section: content-sized (the toolbar's
+   space-between layout centers it) with the same button spacing. No
+   overflow clipping: the dropdown popups must extend over the editor. */
+.bn-md-toolbar {
+  display: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+body.bn-md-mode .toolbar .bn-md-toolbar {
+  display: flex;
+}
+.bn-md-toolbar > :not(:first-child) {
+  margin-left: 2px;
+}
+.bn-md-editor {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  /* Mirror the note-editor's page layout variables: they are scoped to the
+     (hidden) .editor-core, so redeclare the same values here. */
+  --editor-padding-inline: 30px;
+  --editor-padding-block: 20px;
+  --editor-max-inner-width: 70ch;
+  --editor-max-width: calc(
+    var(--editor-max-inner-width) + var(--editor-padding-inline) * 2
+  );
+}
+body.bn-md-mode .bn-md-editor {
+  display: flex;
+}
+.bn-md-editor .bn-md-textarea {
+  flex: 1;
+  width: 100%;
+  margin: 0;
+  /* Same page padding as the rich-text view */
+  padding: var(--editor-padding-block) var(--editor-padding-inline);
+  box-sizing: border-box;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: inherit;
+  font-family:
+    ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  /* Follow the note editor's font-size preference (set as a CSS variable on
+     the iframe root by the note-editor). */
+  font-size: var(--font-size, 14px);
+  line-height: 1.6;
+  tab-size: 2;
+  white-space: pre-wrap;
+}
+
+/* CodeMirror-based markdown source editor */
+.bn-md-editor .cm-editor {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  background: transparent;
+  color: inherit;
+}
+.bn-md-editor .cm-editor.cm-focused {
+  outline: none;
+}
+.bn-md-editor .cm-scroller {
+  font-family:
+    ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  /* Follow the note editor's font-size preference (set as a CSS variable on
+     the iframe root by the note-editor). */
+  font-size: var(--font-size, 14px);
+  line-height: 1.6;
+}
+.bn-md-editor .cm-content {
+  caret-color: var(--fill-primary, currentColor);
+  tab-size: 2;
+  /* Same page padding as the rich-text view (on the editable element, like
+     the note-editor does, so the margin stays selectable). */
+  padding: var(--editor-padding-block) var(--editor-padding-inline);
+}
+.bn-md-editor .cm-line {
+  padding: 0;
+}
+/* Center the source at the same measure as the rich-text view in the
+   note tabs' comfortable view mode. */
+[contentViewMode="comfortable"] .bn-md-editor .cm-scroller {
+  justify-content: center;
+}
+[contentViewMode="comfortable"] .bn-md-editor .cm-content {
+  max-width: var(--editor-max-width);
+  min-width: min(100%, var(--editor-max-width));
+}
+[contentViewMode="comfortable"] .bn-md-editor .bn-md-textarea {
+  max-width: var(--editor-max-width);
+  margin: 0 auto;
+}
+.bn-md-editor .cm-activeLine {
+  background-color: var(--fill-senary, rgba(128, 128, 128, 0.06));
+}
+.bn-md-editor .cm-cursor {
+  border-left-color: var(--fill-primary, currentColor);
+}
+
+/* Markdown token colors: theme-aware via the note-editor's design tokens,
+   which already flip with prefers-color-scheme. Classes come from
+   @lezer/highlight's classHighlighter. */
+.bn-md-editor .tok-heading {
+  color: var(--accent-blue, #4072e5);
+  font-weight: 600;
+}
+.bn-md-editor .tok-strong {
+  font-weight: 600;
+}
+.bn-md-editor .tok-emphasis {
+  font-style: italic;
+}
+.bn-md-editor .tok-strikethrough {
+  text-decoration: line-through;
+}
+.bn-md-editor .tok-link {
+  color: var(--accent-teal, #59adc4);
+}
+.bn-md-editor .tok-url {
+  color: var(--accent-teal, #59adc4);
+  text-decoration: underline;
+}
+.bn-md-editor .tok-labelName {
+  color: var(--accent-teal, #59adc4);
+}
+.bn-md-editor .tok-monospace {
+  color: var(--accent-wood, #cc7a52);
+  background-color: var(--fill-quinary, rgba(128, 128, 128, 0.08));
+  border-radius: 2px;
+}
+.bn-md-editor .tok-string {
+  color: var(--accent-green, #39bf68);
+}
+.bn-md-editor .tok-atom {
+  color: var(--accent-orange, #ff794c);
+}
+.bn-md-editor .tok-contentSeparator {
+  color: var(--fill-secondary, gray);
+}
+.bn-md-editor .tok-quote {
+  color: var(--fill-secondary, gray);
+  font-style: italic;
+}
+.bn-md-editor .tok-comment {
+  color: var(--fill-tertiary, gray);
+  font-style: italic;
+}
+.bn-md-editor .tok-meta,
+.bn-md-editor .tok-processingInstruction,
+.bn-md-editor .tok-punctuation {
+  color: var(--fill-secondary, gray);
+}
+
+/* CodeMirror search panel (find/replace), themed like the note editor's
+   findbar. */
+.bn-md-editor .cm-panels {
+  background-color: var(--material-sidepane, var(--color-toolbar, #f9f9f9));
+  border-bottom: var(--material-panedivider, 1px solid rgba(0, 0, 0, 0.15));
+  color: var(--fill-primary, inherit);
+}
+.bn-md-editor .cm-panel.cm-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  /* Match the note editor's UI chrome (.toolbar is 12px) */
+  font-size: 12px;
+}
+.bn-md-editor .cm-panel.cm-search label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: 4px;
+}
+.bn-md-editor .cm-panel.cm-search input[type="checkbox"] {
+  margin: 0;
+}
+.bn-md-editor .cm-panel.cm-search .cm-textfield {
+  background-color: var(--color-background, #fff);
+  color: var(--fill-primary, inherit);
+  border: var(--material-panedivider, 1px solid rgba(0, 0, 0, 0.15));
+  border-radius: 5px;
+  padding: 2px 6px;
+}
+.bn-md-editor .cm-panel.cm-search .cm-button {
+  background-image: none;
+  background-color: var(--color-button, #fff);
+  color: var(--fill-primary, inherit);
+  border: var(--material-panedivider, 1px solid rgba(0, 0, 0, 0.15));
+  border-radius: 5px;
+  padding: 2px 8px;
+}
+.bn-md-editor .cm-panel.cm-search .cm-button:hover {
+  background-color: var(--fill-quinary, rgba(128, 128, 128, 0.08));
+}
+.bn-md-editor .cm-panel.cm-search [name="close"] {
+  position: static;
+  order: 100;
+  margin-inline-start: auto;
+  font-size: 16px;
+  padding: 0 6px;
+  color: var(--fill-secondary, gray);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.bn-md-editor .cm-searchMatch {
+  background-color: var(--accent-yellow, #ffd400);
+  opacity: 0.5;
+}
+.bn-md-editor .cm-searchMatch-selected {
+  opacity: 1;
+}
+
+/* Citations, annotations, and note links are rendered as atomic chips
+   instead of their raw HTML source. */
+.bn-md-editor .bn-md-node {
+  padding: 0 4px;
+  border-radius: 4px;
+  background-color: var(--fill-quinary, rgba(128, 128, 128, 0.08));
+  border: 1px solid var(--color-border50, rgba(128, 128, 128, 0.2));
+  cursor: default;
+}
+.bn-md-editor .bn-md-node-citation {
+  color: var(--accent-teal, #59adc4);
+}
+.bn-md-editor .bn-md-node-notelink {
+  color: var(--accent-blue, #4072e5);
+}
+.bn-md-editor .bn-md-node-notelink::before {
+  content: "🔗\00a0";
+  font-size: 0.85em;
+}
+.bn-md-editor .bn-md-node-annotation {
+  border-inline-start: 3px solid var(--accent-yellow, #faa700);
+  font-style: italic;
+}
+.bn-md-editor .bn-md-node-image {
+  color: var(--accent-green, #39bf68);
+}
+.bn-md-editor .bn-md-node-image::before {
+  content: "🖼\00a0";
+  font-size: 0.85em;
+}
+
+/* Hover preview popup for the chips (parented to the body; the geometry is
+   inlined by mdEditor.js, the .popup base look comes from the
+   note-editor stylesheet). */
+.bn-md-preview > .popup {
+  flex-direction: column;
+}
+.bn-md-preview .bn-md-preview-body > * {
+  margin-block: 0;
+}
+.bn-md-preview img {
+  max-width: 100%;
+  height: auto;
+}
+.bn-md-preview li {
+  white-space: normal;
+}
+
+/* Chip action popup (citation/annotation/image chips), mirroring the note
+   editor's node popups: a row of icon+title buttons, native .popup look. */
+.bn-md-action > .popup {
+  flex-direction: row;
+}
+.bn-md-action .popup .title {
+  white-space: nowrap;
+}
+
+/* Magic-key command palette in markdown mode, mirroring the rich-text
+   palette's UI (extras/editor/magicKey.ts). */
+.bn-md-magic > .popup {
+  max-width: 360px;
+  max-height: 360px;
+  overflow: hidden;
+}
+.bn-md-magic > .popup input {
+  padding: 0 7px;
+  background: var(--material-background);
+  border-radius: 5px;
+  border: var(--material-border-quinary);
+  width: 100%;
+  outline: none;
+  height: 28px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.bn-md-magic > .popup input:focus {
+  outline: none;
+  border-color: rgba(0, 0, 0, 0);
+  box-shadow: 0 0 0 var(--width-focus-border) var(--color-focus-search);
+}
+.bn-md-magic .popup-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  min-width: 220px;
+  max-height: 340px;
+}
+.bn-md-magic .popup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden auto;
+}
+.bn-md-magic .popup-item {
+  display: flex;
+  align-items: flex-end;
+  padding: 6px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+.bn-md-magic .popup-item[hidden] {
+  display: none !important;
+}
+.bn-md-magic .popup-item-title {
+  flex: 1;
+}
+.bn-md-magic .popup-item-key {
+  margin-left: 12px;
+  font-size: 0.9em;
+  font-family: monospace;
+}
+.bn-md-magic .popup-item:hover {
+  background-color: var(--fill-senary);
+}
+.bn-md-magic .popup-item.selected {
+  background-color: var(--color-accent);
+  color: #fff;
+}

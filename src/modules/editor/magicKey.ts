@@ -20,6 +20,11 @@ export function registerMagicKeyCommand(
   return options.id;
 }
 
+/** Registered custom commands, e.g. for the markdown mode's palette. */
+export function getRegisteredMagicKeyCommands(): MagicKeyCommandOptions[] {
+  return Array.from(registry.values());
+}
+
 export function unregisterMagicKeyCommand(id: string): boolean {
   if (!registry.delete(id)) {
     return false;
@@ -80,10 +85,16 @@ async function updateEditorCommands(editor: Zotero.EditorInstance) {
         }
       }),
   }));
-  EditorAPI.setMagicKeyCommands(
-    Components.utils.cloneInto(commands, editor._iframeWindow, {
-      wrapReflectors: true,
-      cloneFunctions: true,
-    }),
-  );
+  try {
+    EditorAPI.setMagicKeyCommands(
+      Components.utils.cloneInto(commands, editor._iframeWindow, {
+        wrapReflectors: true,
+        cloneFunctions: true,
+      }),
+    );
+  } catch (e) {
+    // Content-side errors (e.g. while the editor is reinitializing) cross
+    // the boundary as opaque exceptions; log instead of propagating.
+    ztoolkit.log("[BN magic key] setMagicKeyCommands error", e);
+  }
 }
