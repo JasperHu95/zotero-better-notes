@@ -1221,6 +1221,15 @@ describe("MarkdownMode", function () {
       10000,
     );
 
+    // The files flavor (screenshot / image file paste) synthesizes
+    // image-only HTML; it converts and imports standalone too
+    const bareMD = await addon.api.editor.convertPastedHTMLToMarkdown(
+      editor,
+      `<p><img src="data:image/png;base64,${b64}"/></p>`,
+    );
+    assert.include(bareMD, 'ztype="zimage"');
+    assert.notInclude(bareMD, "data:image");
+
     await addon.api.editor.toggleMarkdownMode(editor);
     await Zotero.Items.erase(note.id);
     await Zotero.Items.erase(sourceNote.id);

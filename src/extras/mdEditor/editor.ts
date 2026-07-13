@@ -136,36 +136,70 @@ export function create(
     syntaxHighlighting(classHighlighter),
     syntaxHighlighting(markdownTagHighlighter),
     zNodeField,
-    // Pasting rich content (copied note content in particular) converts
-    // it to markdown instead of falling back to the plain-text flavor;
-    // plain-only pastes keep CodeMirror's default behavior.
+    // Pasting rich content (copied note content in particular) converts it
+    // to markdown instead of falling back to the plain-text flavor, and the
+    // files flavor (a screenshot, an image file copied from the file system)
+    // goes through the same converter as data-URI images, which imports
+    // them into the note; plain-only pastes keep CodeMirror's default
+    // behavior.
     EditorView.domEventHandlers({
       paste: (event) => {
-        const html = event.clipboardData?.getData("text/html");
-        if (!html?.trim() || !callbacks.convertPaste) {
+        const clipboardData = event.clipboardData;
+        const convertPaste = callbacks.convertPaste;
+        if (!clipboardData || !convertPaste) {
           return false;
         }
-        const plain = event.clipboardData?.getData("text/plain") || "";
-        event.preventDefault();
-        try {
-          callbacks.convertPaste(html, plain, (md: string) => {
-            if (typeof md !== "string" || !md) {
+        const insertConverted = (md: string) => {
+          if (typeof md !== "string" || !md) {
+            return;
+          }
+          tryOrRetryNextTick(() => {
+            const view = views.get(container);
+            if (!view) {
               return;
             }
-            tryOrRetryNextTick(() => {
-              const view = views.get(container);
-              if (!view) {
-                return;
-              }
-              view.dispatch({
-                ...view.state.replaceSelection(md),
-                scrollIntoView: true,
-              });
+            view.dispatch({
+              ...view.state.replaceSelection(md),
+              scrollIntoView: true,
             });
           });
-        } catch (e) {
-          console.error(e);
+        };
+        const html = clipboardData.getData("text/html");
+        if (html?.trim()) {
+          const plain = clipboardData.getData("text/plain") || "";
+          event.preventDefault();
+          try {
+            convertPaste(html, plain, insertConverted);
+          } catch (e) {
+            console.error(e);
+          }
+          return true;
         }
+        const imageFiles = Array.from(clipboardData.files || []).filter(
+          (file) => file.type.startsWith("image/"),
+        );
+        if (!imageFiles.length) {
+          return false;
+        }
+        event.preventDefault();
+        Promise.all(
+          imageFiles.map(
+            (file) =>
+              new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result));
+                reader.onerror = () => reject(reader.error);
+                reader.readAsDataURL(file);
+              }),
+          ),
+        )
+          .then((urls) => {
+            const imageHTML = urls
+              .map((url) => `<p><img src="${url}"/></p>`)
+              .join("");
+            convertPaste(imageHTML, "", insertConverted);
+          })
+          .catch(console.error);
         return true;
       },
     }),
