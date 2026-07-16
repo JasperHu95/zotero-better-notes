@@ -92,9 +92,8 @@ and:
 
 ## 👋 Install
 
-- Download the plugin (.xpi file) from below (beta version is only for Zotero beta!).
-  - [Latest Stable](https://github.com/windingwind/zotero-better-notes/releases/latest)
-  - [All Releases](https://github.com/windingwind/zotero-better-notes/releases)
+- Download the plugin `.xpi` file from this repository:
+  - [⬇ `better-notes-for-zotero.xpi`](./better-notes-for-zotero.xpi) — built from the latest `master` commit (includes the PDF chapter-headings feature).
 
   _Note_: If you're using Firefox as your browser, right-click the `.xpi` and select "Save As.."
 
