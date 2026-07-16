@@ -4,6 +4,9 @@ menuEditor-resizeImage = Resize Image
 menuEditor-copy = Copy Note Link...
 menuEditor-copyLine = Copy Link of Line { $line }
 menuEditor-copySection = Copy Link of Section { $section }
+menuEditor-insertPdfOutline = Insert PDF Chapter Headings
+pdfOutline-noPdf = No PDF attachment found for this note's item.
+pdfOutline-noOutline = No chapter bookmarks found in the PDF.
 
 templateEditor-templateType = Type
 templateEditor-templateName = Name

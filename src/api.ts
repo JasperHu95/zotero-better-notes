@@ -78,6 +78,13 @@ import {
   getLinesInNote,
 } from "./utils/note";
 import {
+  getPdfOutline,
+  outlineToMarkdown,
+  outlineToHtml,
+  resolvePdfAttachment,
+  getPdfHeadings,
+} from "./utils/pdfOutline";
+import {
   getAnnotationByLinkTarget,
   getLinkTargetByAnnotation,
   getNoteLinkInboundRelation,
@@ -205,6 +212,11 @@ const note = {
   getNoteTree,
   getNoteTreeFlattened,
   getNoteTreeNodeById,
+  getPdfOutline,
+  outlineToMarkdown,
+  outlineToHtml,
+  resolvePdfAttachment,
+  getPdfHeadings,
 };
 
 const relation = {

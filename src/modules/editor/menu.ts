@@ -8,6 +8,7 @@ import {
   updateImageDimensionsAtCursor,
 } from "../../utils/editor";
 import { getString } from "../../utils/locale";
+import { insertPdfHeadingsIntoEditor } from "./pdfOutlineCommand";
 
 interface MenuElementOptions {
   tag: "menuitem" | "menu" | "menuseparator";
@@ -141,6 +142,29 @@ export function initEditorMenu(editor: Zotero.EditorInstance) {
           ],
         }),
       );
+
+      // Only offer PDF chapter headings when the note belongs to an item that
+      // could have a PDF attachment.
+      if (editor._item?.isNote() && editor._item.parentItem) {
+        editor._popup.append(
+          createMenuElement(doc, {
+            tag: "menuseparator",
+          }),
+        );
+        editor._popup.append(
+          createMenuElement(doc, {
+            tag: "menuitem",
+            id: makeId("insertPdfOutline"),
+            label: getString("menuEditor-insertPdfOutline"),
+            icon,
+            commandListener: () => {
+              void insertPdfHeadingsIntoEditor(editor).catch((e) =>
+                Zotero.logError(e as Error),
+              );
+            },
+          }),
+        );
+      }
     },
   );
 }

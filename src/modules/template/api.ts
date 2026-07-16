@@ -2,6 +2,11 @@ import YAML = require("yamljs");
 import { itemPicker } from "../../utils/itemPicker";
 import { getString } from "../../utils/locale";
 import { fill, slice } from "../../utils/str";
+import {
+  getPdfHeadings,
+  getPdfOutline,
+  resolvePdfAttachment,
+} from "../../utils/pdfOutline";
 
 export {
   runTemplate,
@@ -27,11 +32,22 @@ async function runTemplate(
   },
 ): Promise<string> {
   ztoolkit.log(`runTemplate: ${key}`);
+  // Template helpers exposed as shorthand (${getPdfHeadings(topItem)}).
+  // In dry-run (preview) mode they short-circuit so no reader is opened.
+  const pdfHeadingsHelper = async (item: Zotero.Item): Promise<string> =>
+    options.dryRun ? "" : getPdfHeadings(item);
+  const pdfOutlineHelper = async (item: Zotero.Item): Promise<unknown> => {
+    if (options.dryRun) {
+      return null;
+    }
+    const attachment = await resolvePdfAttachment(item);
+    return attachment ? getPdfOutline(attachment) : null;
+  };
   if (argList.length > 0) {
     argString += ", ";
   }
-  argString += "_env";
-  argList.push({
+  argString += "getPdfHeadings, getPdfOutline, _env";
+  argList.push(pdfHeadingsHelper, pdfOutlineHelper, {
     dryRun: options.dryRun,
   });
   let templateText = addon.api.template.getTemplateText(key);

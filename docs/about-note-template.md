@@ -134,6 +134,21 @@ Each template has its own global variables. See [Template Type](#template-type) 
 
 All templates share a global variable `_env = {dryRun: boolean}`. In preview mode (in template editor), the `_env.dryRun` is `true` and in that case you must not modify the library.
 
+### PDF Chapter Headings
+
+Two helpers are available in every template for generating headings from a PDF's outline (chapter bookmarks):
+
+- `getPdfHeadings(item)` — returns ready-to-insert Markdown headings (`## …` …). Top-level chapters become `##`; nested sections descend to `###`, `####`, … capped at `######` (H6). Returns `""` when the item has no PDF or the PDF has no outline.
+- `getPdfOutline(item)` — returns the raw outline tree (`{ title, level, children }[]`) for custom rendering.
+
+Both accept either a top-level item or a note (the note's parent item is used). In preview mode they short-circuit and return `""`/`null` so no reader is opened.
+
+```js
+${await getPdfHeadings(topItem)}
+```
+
+> 💡 Requires the PDF to ship an outline (bookmarks). Most academic publisher PDFs do; if not, the helper returns `""`. You can also trigger this from the note editor's right-click menu → _Insert PDF Chapter Headings_, or via the Magic Key palette (`/` → "pdf").
+
 ## Template Type
 
 ### Item
