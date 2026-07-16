@@ -1,6 +1,6 @@
 {
   "name": "zotero-better-notes",
-  "version": "3.3.0-beta.4",
+  "version": "1.0.0-beta",
   "description": "Everything about note management. All in Zotero.",
   "config": {
     "addonName": "Better Notes for Zotero",
