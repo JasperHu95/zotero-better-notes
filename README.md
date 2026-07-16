@@ -10,6 +10,8 @@ Everything about note management. All in Zotero.
 
 Join the community on Telegram: [@bnzotero](https://t.me/boost/bnzotero)
 
+> **Fork notice:** This repository is a fork of [windingwind/zotero-better-notes](https://github.com/windingwind/zotero-better-notes), created to add custom improvements on top of the original plugin. All credit for the original work goes to [windingwind](https://github.com/windingwind).
+
 ## 🧩 Outline
 
 [🧐 What is this?](#-what-is-this)
@@ -86,6 +88,8 @@ and:
 
 📝 Enhancements for Zotero's note editor with outline, link relation, view images.... Open as much note tabs/windows as you like!
 
+📑 Auto-generate note headings from a PDF's chapter outline (bookmarks) — turn a paper's table of contents into note headings in one click. [Learn more →](#pdf-chapter-headings)
+
 ## 👋 Install
 
 - Download the plugin (.xpi file) from below (beta version is only for Zotero beta!).
@@ -149,6 +153,18 @@ BN enhances the note editor with link preview. Hover+Ctrl/Cmd or click the link 
 #### Direct Markdown Paste
 
 BN supports direct markdown paste. You can paste markdown content into the note editor, and it will be converted to the rich text format automatically.
+
+#### PDF Chapter Headings
+
+BN can read a PDF attachment's outline (its chapter/section bookmarks) and insert the chapter titles as note headings — top-level chapters become `##` / H2, nested sections descend to `###` / H3, … capped at H6. A blank line follows each heading so you can start taking notes underneath right away.
+
+Three ways to use it:
+
+- In the note editor, type `/` to open the Magic Key palette and pick **Insert PDF Chapter Headings** (the label follows Zotero's UI language: _插入 PDF 章节标题_ / _Insert PDF Chapter Headings_).
+- Right-click in the note editor → **Insert PDF Chapter Headings**.
+- In a note template, call the helper: `${await getPdfHeadings(topItem)}` (returns Markdown headings; pair with `// @use-markdown` to render them as headings). `${await getPdfOutline(topItem)}` returns the raw outline tree for custom rendering.
+
+> 💡 The PDF must ship an outline (bookmarks). Most academic-publisher PDFs do; if it doesn't, BN shows a hint and skips. In Markdown mode the headings are inserted as `##` text; in rich-text mode they are inserted as real heading blocks. The outline is read from Zotero's built-in PDF reader — if no reader is open, BN opens the PDF in a background tab briefly, reads the outline, then closes it.
 
 ### Note Link
 

@@ -4,6 +4,9 @@ menuEditor-resizeImage=缩放图片
 menuEditor-copy = 复制笔记链接...
 menuEditor-copyLine = 复制行链接 (L{ $line })
 menuEditor-copySection = 复制节链接 (Sec. { $section })
+menuEditor-insertPdfOutline = 插入 PDF 章节标题
+pdfOutline-noPdf = 未找到该条目的 PDF 附件。
+pdfOutline-noOutline = 该 PDF 无章节书签。
 
 templateEditor-templateType = 类型
 templateEditor-templateName = 名称

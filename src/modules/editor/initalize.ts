@@ -7,6 +7,7 @@ import { initEditorPopup } from "./popup";
 import { initEditorToolbar } from "./toolbar";
 import { initEditorSections } from "./section";
 import { initEditorMagicKeyCommands } from "./magicKey";
+import { registerPdfOutlineMagicKeyCommand } from "./pdfOutlineCommand";
 import {
   initEditorMarkdownMode,
   registerMarkdownEditorBackend,
@@ -49,6 +50,7 @@ export function registerEditorInstanceHook() {
   });
   registerMarkdownModePrefObserver();
   registerMarkdownEditorBackend();
+  registerPdfOutlineMagicKeyCommand();
 }
 
 export function unregisterEditorInstanceHook() {
