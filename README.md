@@ -155,15 +155,37 @@ BN supports direct markdown paste. You can paste markdown content into the note 
 
 #### PDF Chapter Headings
 
-BN can read a PDF attachment's outline (its chapter/section bookmarks) and insert the chapter titles as note headings — top-level chapters become `##` / H2, nested sections descend to `###` / H3, … capped at H6. A blank line follows each heading so you can start taking notes underneath right away.
+> ⚡ **This feature is exclusive to this fork** and is not available in the upstream plugin.
 
-Three ways to use it:
+zotero-better-notes can read a PDF attachment's outline (chapter/section bookmarks) and turn it
+into a structured note in one click — top-level chapters become `##` / H2,
+nested sections descend to `###` / H3, and so on, capped at H6. A blank line
+follows each heading so you can start taking notes right underneath.
 
-- In the note editor, type `/` to open the Magic Key palette and pick **Insert PDF Chapter Headings** (the label follows Zotero's UI language: _插入 PDF 章节标题_ / _Insert PDF Chapter Headings_).
-- Right-click in the note editor → **Insert PDF Chapter Headings**.
-- In a note template, call the helper: `${await getPdfHeadings(topItem)}` (returns Markdown headings; pair with `// @use-markdown` to render them as headings). `${await getPdfOutline(topItem)}` returns the raw outline tree for custom rendering.
+**Three ways to trigger it:**
 
-> 💡 The PDF must ship an outline (bookmarks). Most academic-publisher PDFs do; if it doesn't, BN shows a hint and skips. In Markdown mode the headings are inserted as `##` text; in rich-text mode they are inserted as real heading blocks. The outline is read from Zotero's built-in PDF reader — if no reader is open, BN opens the PDF in a background tab briefly, reads the outline, then closes it.
+1. **Magic Key** — Type `/` in the note editor to open the command palette,
+   then select **Insert PDF Chapter Headings** (the label follows Zotero's UI
+   language: _插入 PDF 章节标题_).
+2. **Right-click menu** — Right-click anywhere in the note editor and choose
+   **Insert PDF Chapter Headings**.
+3. **Note template** — Call the helper functions directly:
+   - `${await getPdfHeadings(topItem)}` — returns Markdown headings; pair with
+     `// @use-markdown` to render them as formatted headings.
+   - `${await getPdfOutline(topItem)}` — returns the raw outline tree for
+     fully custom rendering.
+
+> 💡 **Notes:**
+>
+> - The PDF must contain an outline (bookmarks). Most academic-publisher PDFs
+>   do. If it doesn't, zotero-better-notes shows a hint and skips silently.
+>
+> - In **Markdown mode**, headings are inserted as `##` text; in **rich-text
+>   mode**, they are inserted as real heading blocks.
+>
+> - The outline is read from Zotero's built-in PDF reader. If no reader is
+>   open, zotero-better-notes opens the PDF in a background tab, reads the outline, then closes
+>   it — no manual steps required.
 
 ### Note Link
 
