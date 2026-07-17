@@ -157,7 +157,7 @@ BN supports direct markdown paste. You can paste markdown content into the note 
 
 > ⚡ **This feature is exclusive to this fork** and is not available in the upstream plugin.
 
-zotero-better-notes can read a PDF attachment's outline (chapter/section bookmarks) and turn it
+BN can read a PDF attachment's outline (chapter/section bookmarks) and turn it
 into a structured note in one click — top-level chapters become `##` / H2,
 nested sections descend to `###` / H3, and so on, capped at H6. A blank line
 follows each heading so you can start taking notes right underneath.
@@ -178,13 +178,13 @@ follows each heading so you can start taking notes right underneath.
 > 💡 **Notes:**
 >
 > - The PDF must contain an outline (bookmarks). Most academic-publisher PDFs
->   do. If it doesn't, zotero-better-notes shows a hint and skips silently.
+>   do. If it doesn't, BN shows a hint and skips silently.
 >
 > - In **Markdown mode**, headings are inserted as `##` text; in **rich-text
 >   mode**, they are inserted as real heading blocks.
 >
 > - The outline is read from Zotero's built-in PDF reader. If no reader is
->   open, zotero-better-notes opens the PDF in a background tab, reads the outline, then closes
+>   open, BN opens the PDF in a background tab, reads the outline, then closes
 >   it — no manual steps required.
 
 ### Note Link
